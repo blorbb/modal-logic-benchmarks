@@ -1,0 +1,9 @@
+[submodule "solvers/CEGARBox"]
+	path = solvers/CEGARBox
+	url = git@github.com:cormackikkert/CEGARBox.git
+[submodule "solvers/factplusplus"]
+	path = solvers/factplusplus
+	url = https://bitbucket.org/dtsarkov/factplusplus.git
+[submodule "solvers/coq-verified-tableaux"]
+	path = solvers/coq-tableaux
+	url = git@github.com:rajeevgore/RAJED-reasoning-about-judgements-entailments-and-deductions.git
