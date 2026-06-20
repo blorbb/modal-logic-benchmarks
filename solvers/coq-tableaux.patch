@@ -1,0 +1,200 @@
+diff --git i/Verified-tableaux-for-K-KT-S4/src/dune w/Verified-tableaux-for-K-KT-S4/src/dune
+new file mode 100644
+index 0000000..9412ce6
+--- /dev/null
++++ w/Verified-tableaux-for-K-KT-S4/src/dune
+@@ -0,0 +1,7 @@
++(executable
++ (name main))
++
++(menhir
++ (modules parser))
++
++(ocamllex lexer)
+diff --git i/Verified-tableaux-for-K-KT-S4/src/dune-project w/Verified-tableaux-for-K-KT-S4/src/dune-project
+new file mode 100644
+index 0000000..49e5002
+--- /dev/null
++++ w/Verified-tableaux-for-K-KT-S4/src/dune-project
+@@ -0,0 +1,7 @@
++(lang dune 3.17)
++
++(name coqk)
++
++(generate_opam_files true)
++
++(using menhir 3.0)
+diff --git i/Verified-tableaux-for-K-KT-S4/src/lexer.mll w/Verified-tableaux-for-K-KT-S4/src/lexer.mll
+new file mode 100644
+index 0000000..33be939
+--- /dev/null
++++ w/Verified-tableaux-for-K-KT-S4/src/lexer.mll
+@@ -0,0 +1,47 @@
++{
++	open Lexing
++	open Parser
++
++	exception SyntaxError of string
++
++	let newline lexbuf =
++		let pos = lexbuf.lex_curr_p in
++		lexbuf.lex_curr_p <-
++			{pos with pos_lnum = pos.pos_lnum +1;
++			          pos_bol = pos.pos_cnum}
++
++}
++
++let chiffre = ['0'-'9']
++let ident = chiffre+
++let proposition  = 'p' ident
++let relation = 'r' ident
++let boxe = '[' relation ']'
++let diamond = '<' relation '>'
++
++rule next_token = parse
++| ' ' | '\t' {next_token lexbuf}
++| '\n' | '\r' {newline lexbuf; next_token lexbuf}
++| "%" {comment lexbuf}
++| diamond {Diamond}
++| boxe {Boxe}
++| ";" {SEMICOLON}
++| "(" { LPAR}
++| ")" { RPAR}
++| "~" {Not}
++| "&" {Conj}
++| "|" {Dij}
++| "<->" {Equiv}
++| "->" {Impl}
++| "true" {TRUE}
++| "false" {FALSE}
++| "begin" {BEGIN}
++| "end" {END}
++| eof {EOF}
++| proposition as p {Prop (int_of_string (String.sub p 1 (String.length p -1)))}
++| _ as s { raise (SyntaxError  ("illegal character: " ^ (String.make 1 s))) }
++
++and comment = parse
++| '\n' {newline lexbuf; next_token lexbuf}
++| eof {EOF}
++| _ {comment lexbuf}
+diff --git i/Verified-tableaux-for-K-KT-S4/src/main.ml w/Verified-tableaux-for-K-KT-S4/src/main.ml
+new file mode 100644
+index 0000000..7303058
+--- /dev/null
++++ w/Verified-tableaux-for-K-KT-S4/src/main.ml
+@@ -0,0 +1,28 @@
++open Printf
++
++let check fml =
++  let result = K.solve_sat fml in
++  match result with
++  | true -> print_endline "SAT"
++  | false -> print_endline "UNSAT"
++;;
++
++let check_file filename =
++  let file_text = open_in filename in
++  let lexbuf = Lexing.from_channel file_text in
++  let fml =
++    try Parser.file Lexer.next_token lexbuf with
++    | Lexer.SyntaxError s ->
++      print_string s;
++      exit 1
++  in
++  check fml
++;;
++
++let () =
++  match Array.length Sys.argv with
++  | 2 -> check_file Sys.argv.(1)
++  | _ ->
++      Printf.eprintf "Usage: %s <input_file>\n" Sys.argv.(0);
++      exit 1
++;;
+diff --git i/Verified-tableaux-for-K-KT-S4/src/parser.mly w/Verified-tableaux-for-K-KT-S4/src/parser.mly
+new file mode 100644
+index 0000000..58e981a
+--- /dev/null
++++ w/Verified-tableaux-for-K-KT-S4/src/parser.mly
+@@ -0,0 +1,50 @@
++%{
++  open K
++%}
++
++%token SEMICOLON
++%token LPAR RPAR
++%token Diamond Boxe
++%token TRUE FALSE
++%token EOF
++%token Conj
++%token Dij
++%token Impl
++%token Equiv
++%token Not
++%token BEGIN END
++%token <int> Prop
++
++%right Conj
++%right Dij
++%right Impl
++%right Equiv
++%nonassoc Boxe Diamond Not
++
++%start file
++%type <fml> file
++
++%%
++
++file :
++| BEGIN; f = formulas ;END; EOF {f}
++
++formulas:
++| f1 = formula; SEMICOLON; f2 = formulas {Andf (f1, f2)}
++| f = formula {f}
++
++formula:
++| TRUE {Orf (Varf "p", Negf (Varf "p"))}
++| FALSE {Andf (Varf "p", Negf (Varf "p"))}
++| f = atom {f}
++| Not; f = formula {Negf f}
++| f1 = formula; Conj; f2 = formula {Andf (f1,f2)}
++| f1 = formula; Dij; f2 = formula {Orf (f1,f2)}
++| f1 = formula; Impl; f2 = formula {Implf (f1,f2)}
++| f1 = formula; Equiv; f2 = formula {Andf (Implf (f1,f2), Implf (f2,f1))}
++| Boxe; f = formula {Boxf f}
++| Diamond; f = formula {Diaf f}
++
++atom:
++| LPAR; f = formula; RPAR {f}
++| i = Prop; {Varf (string_of_int i)}
+diff --git i/Verified-tableaux-for-K-KT-S4/theories/S4/extract.v w/Verified-tableaux-for-K-KT-S4/theories/S4/extract.v
+index 98f9433..c29e30b 100644
+--- i/Verified-tableaux-for-K-KT-S4/theories/S4/extract.v
++++ w/Verified-tableaux-for-K-KT-S4/theories/S4/extract.v
+@@ -1,15 +1,16 @@
+-From Ksat Require Import full_language.
++From Ksat Require Import full_language tableau.
+ 
+-From S4sat Require Import tableau.
++(* From S4sat Require Import tableau. *)
+ 
+ Require Import List.
+ Import ListNotations.
+ Require Extraction.
+ Require Import Coq.extraction.ExtrOcamlNativeString.
+ 
++Definition solve_sat (phi : fml) : bool := fml_is_sat [phi].
++Extraction "src/K.ml" solve_sat.
+ 
+-
+-Definition is_sat (phi : fml) : bool := fml_tableau_sat [phi].
++(* Definition is_sat (phi : fml) : bool := fml_tableau_sat [phi]. *)
+ 
+ 
+ Extract Inductive list => "list" [ "[]" "(::)" ].
+@@ -18,4 +19,4 @@ Extract Inductive sumbool => "bool" [ "true" "false" ].
+ Extract Inductive prod => "(*)"  [ "(,)" ].
+ (* Extract Inductive nat => "int" [ "0" "succ" ]
+   "(fun fO fS n -> if n=0 then fO () else fS (n-1))". *)
+-Extraction "S4.ml" is_sat.
++(* Extraction "S4.ml" is_sat. *)
