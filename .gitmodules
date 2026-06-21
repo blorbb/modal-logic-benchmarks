@@ -4,6 +4,9 @@
 [submodule "solvers/factplusplus"]
 	path = solvers/factplusplus
 	url = https://bitbucket.org/dtsarkov/factplusplus.git
-[submodule "solvers/coq-verified-tableaux"]
+[submodule "solvers/coq-tableaux"]
 	path = solvers/coq-tableaux
 	url = git@github.com:rajeevgore/RAJED-reasoning-about-judgements-entailments-and-deductions.git
+[submodule "benches/lwb"]
+	path = benches/lwb
+	url = git@github.com:cormackikkert/LWB-benchmark-generator.git
