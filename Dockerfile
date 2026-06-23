@@ -37,6 +37,19 @@ ENV CXXFLAGS="-include cstdint -std=c++14"
 RUN cmake ..
 RUN make -j$(nproc)
 
+# ===== Build vct (v1) =====
+FROM rocq/rocq-prover:9.1.1 AS build-rocq
+RUN opam update && opam install -y dune menhir minisat rocq-equations
+
+WORKDIR /build
+COPY --chown=rocq:rocq solvers/vct-v1 .
+
+RUN opam exec -- make clean && make
+
+WORKDIR /build/src
+RUN opam exec -- dune build ./bin/main.exe --release
+RUN cp _build/default/bin/main.exe /build/vct
+
 # ===== Run benchmarks =====
 FROM python:3.14 AS runner
 
@@ -45,6 +58,7 @@ WORKDIR /run
 COPY --from=build-cegar /build/dist/build/CEGARBox/CEGARBox .
 COPY --from=build-coq /build/Verified-tableaux-for-K-KT-S4/src/_build/default/main.exe ./coqk
 COPY --from=build-factpp /build/target/FaCT++/FaCT++ .
+COPY --from=build-rocq /build/src/_build/default/bin/main.exe ./vct
 
 COPY benches ./benches
 COPY bench.py .

@@ -10,3 +10,7 @@
 [submodule "benches/lwb"]
 	path = benches/lwb
 	url = git@github.com:cormackikkert/LWB-benchmark-generator.git
+[submodule "solvers/vct-v1"]
+	path = solvers/vct-v1
+	url = git@github.com:blorbb/vct.git
+	branch = v1-basic-sound-complete

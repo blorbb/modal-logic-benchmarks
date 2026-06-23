@@ -12,9 +12,13 @@ import typing
 
 def main():
     logging.basicConfig(level=logging.DEBUG, format="[%(levelname)s] %(message)s")
-    for c, best in Lwb.bench_solver(CegarBox(1, 10 * 1024 * 1024 * 1024)).items():
+    time_limit = 1  # seconds
+    max_mem = 10 * (1024**3)  # 10 GiB
+    for c, best in Lwb.bench_solver(CegarBox(time_limit, max_mem)).items():
         print(f"{c}: {best}")
-    for c, best in Lwb.bench_solver(CoqK(1, 100 * 1024 * 1024)).items():
+    for c, best in Lwb.bench_solver(CoqK(time_limit, max_mem)).items():
+        print(f"{c}: {best}")
+    for c, best in Lwb.bench_solver(Vct(time_limit, max_mem)).items():
         print(f"{c}: {best}")
 
 
@@ -77,6 +81,18 @@ class CegarBox(Solver):
         if out == "Satisfiable":
             return True
         elif out == "Unsatisfiable":
+            return False
+        else:
+            raise ChildProcessError(f"malformed output:\n{out}")
+
+
+class Vct(Solver):
+    def solve(self, intohylo: str) -> bool:
+        Path("./bench.intohylo").write_text(intohylo)
+        out = self.spawn(["./vct", "./bench.intohylo"]).strip()
+        if out == "SAT":
+            return True
+        elif out == "UNSAT":
             return False
         else:
             raise ChildProcessError(f"malformed output:\n{out}")
