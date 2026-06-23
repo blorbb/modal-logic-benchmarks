@@ -52,6 +52,7 @@ RUN cp _build/default/bin/main.exe /build/vct
 
 # ===== Run benchmarks =====
 FROM python:3.14 AS runner
+RUN pip install lark
 
 WORKDIR /run
 
@@ -62,6 +63,7 @@ COPY --from=build-rocq /build/src/_build/default/bin/main.exe ./vct
 
 COPY benches ./benches
 COPY bench.py .
+COPY owl.py .
 
 # apply benchmark patches
 WORKDIR ./benches/lwb
