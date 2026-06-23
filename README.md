@@ -1,28 +1,51 @@
 # Benchmarks for Modal Logic Decision Procedures
 
-TODO.
+WIP.
 
-Requires docker and docker-buildx.
+Requires docker and docker-buildx (optional, remove `buildx` from docker build commands).
 
-```sh
-docker buildx build -t benchmarks .
-```
-
-Setting up solver builds:
-
-Each directory is a git submodule.
-We need to make some minor patches in some cases to build executables.
+## Building
 
 ```sh
 git submodule update --init --recursive --no-fetch --depth 1
+docker buildx build -t benchmarks .
 ```
 
-To make an edit in e.g., `coq-tableaux`:
+The Dockerfile builds binaries in `/run/`.
+The names of the solvers can be found near the bottom of the Dockerfile.
+To copy a binary to your local machine, replace `[solver]` with the binary name (e.g., `coqk` or `CEGARBox`) and run:
 
 ```sh
-cd solvers/coq-tableaux
-git apply ../coq-tableaux.patch # apply existing patches (if any)
-# make edits ...
+docker create --name tmp benchmarks && docker cp tmp:/run/[solver] . && docker rm tmp
+```
+
+## Running
+
+After building the docker container, run:
+
+```sh
+docker run -t benchmarks
+```
+
+## Patching Submodules
+
+The solvers and benchmarks are git submodules.
+To make an edit to one of the submodules, navigate to the desired `[dir]` and run:
+
+```sh
+# apply existing patches if there are any (skip if none)
+git apply ../[dir].patch
+
+# make desired edits ...
+
 git add --intent-to-add .
-git diff > ../coq-tableaux.patch
+git diff > ../[dir].patch
+# clear local changes
+git reset --hard
+```
+
+If the submodule does not have an existing patch, the patch should also be applied in the Dockerfile by copying the patch and running the following in the submodule's directory.
+
+```dockerfile
+RUN patch -p1 < [dir].patch
 ```

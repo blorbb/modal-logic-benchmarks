@@ -1,0 +1,22 @@
+diff --git i/defs.py w/defs.py
+index b262063..66a3266 100644
+--- i/defs.py
++++ w/defs.py
+@@ -311,7 +311,7 @@ def depth(f):
+ )
+     assert "Missing case in depth", f
+ 
+-import collections
++import collections.abc
+ import functools
+ 
+ # Code from https://wiki.python.org/moin/PythonDecoratorLibrary#Memoize
+@@ -324,7 +324,7 @@ class memoized(object):
+       self.func = func
+       self.cache = {}
+    def __call__(self, *args):
+-      if not isinstance(args, collections.Hashable):
++      if not isinstance(args, collections.abc.Hashable):
+          # uncacheable. a list, for instance.
+          # better to not cache than blow up.
+          return self.func(*args)

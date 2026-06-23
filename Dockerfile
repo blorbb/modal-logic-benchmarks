@@ -41,13 +41,18 @@ RUN make -j$(nproc)
 # ===== Run benchmarks =====
 FROM python:3.14 AS runner
 
-COPY benches/LWB-benchmark-generator/ /benchmarks/lwb
-COPY bench.py /benchmarks
-
-WORKDIR /benchmarks
+WORKDIR /run
 
 COPY --from=build-cegar /build/dist/build/CEGARBox/CEGARBox .
 COPY --from=build-coq /build/Verified-tableaux-for-K-KT-S4/src/_build/default/main.exe ./coqk
 COPY --from=build-factpp /build/target/FaCT++/FaCT++ .
 
-CMD ["python", "./bench.py"]
+COPY benches ./benches
+COPY bench.py .
+
+# apply benchmark patches
+WORKDIR ./benches/lwb
+RUN patch -p1 < ../lwb.patch
+WORKDIR /run
+
+CMD ["python3", "./bench.py"]
