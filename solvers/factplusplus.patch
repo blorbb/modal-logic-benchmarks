@@ -1,0 +1,10 @@
+diff --git i/CMakeLists.txt w/CMakeLists.txt
+index 708c779..6d6f7f0 100644
+--- i/CMakeLists.txt
++++ w/CMakeLists.txt
+@@ -24,5 +24,3 @@ endif()
+ 
+ add_subdirectory(Kernel)
+ add_subdirectory(FaCT++)
+-add_subdirectory(FaCT++.C)
+-add_subdirectory(FaCT++.JNI)

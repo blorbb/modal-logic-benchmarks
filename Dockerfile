@@ -12,9 +12,9 @@ RUN cabal build
 FROM coqorg/coq:8.17.1 AS build-coq
 RUN opam update && opam install -y dune menhir
 
-COPY --chown=coq:coq solvers/coq-tableaux/ /build
-COPY --chown=coq:coq solvers/coq-tableaux.patch /build
 WORKDIR /build
+COPY --chown=coq:coq solvers/coq-tableaux/ .
+COPY --chown=coq:coq solvers/coq-tableaux.patch .
 RUN patch -p1 < coq-tableaux.patch
 
 WORKDIR ./Verified-tableaux-for-K-KT-S4
@@ -27,14 +27,13 @@ RUN opam exec -- dune build ./main.exe --release
 FROM ubuntu:24.04 AS build-factpp
 RUN apt-get update && apt-get install -y cmake gcc build-essential
 
-COPY solvers/factplusplus/ /build
 WORKDIR /build
-
-# Remove the JNI folder from the CMake configuration
-RUN sed -i '/FaCT++.JNI/d' CMakeLists.txt
-ENV CXXFLAGS="-include cstdint -std=c++14"
+COPY solvers/factplusplus/ .
+COPY solvers/factplusplus.patch .
+RUN patch -p1 < factplusplus.patch
 
 WORKDIR /build/target
+ENV CXXFLAGS="-include cstdint -std=c++14"
 RUN cmake ..
 RUN make -j$(nproc)
 
