@@ -26,10 +26,10 @@ index 0000000..49e5002
 +(using menhir 3.0)
 diff --git i/Verified-tableaux-for-K-KT-S4/src/lexer.mll w/Verified-tableaux-for-K-KT-S4/src/lexer.mll
 new file mode 100644
-index 0000000..33be939
+index 0000000..4e82088
 --- /dev/null
 +++ w/Verified-tableaux-for-K-KT-S4/src/lexer.mll
-@@ -0,0 +1,47 @@
+@@ -0,0 +1,48 @@
 +{
 +	open Lexing
 +	open Parser
@@ -39,44 +39,45 @@ index 0000000..33be939
 +	let newline lexbuf =
 +		let pos = lexbuf.lex_curr_p in
 +		lexbuf.lex_curr_p <-
-+			{pos with pos_lnum = pos.pos_lnum +1;
++			{pos with pos_lnum = pos.pos_lnum + 1;
 +			          pos_bol = pos.pos_cnum}
-+
 +}
 +
 +let chiffre = ['0'-'9']
 +let ident = chiffre+
-+let proposition  = 'p' ident
-+let relation = 'r' ident
-+let boxe = '[' relation ']'
-+let diamond = '<' relation '>'
++let proposition = 'p' ident
 +
 +rule next_token = parse
-+| ' ' | '\t' {next_token lexbuf}
-+| '\n' | '\r' {newline lexbuf; next_token lexbuf}
-+| "%" {comment lexbuf}
-+| diamond {Diamond}
-+| boxe {Boxe}
-+| ";" {SEMICOLON}
-+| "(" { LPAR}
-+| ")" { RPAR}
-+| "~" {Not}
-+| "&" {Conj}
-+| "|" {Dij}
-+| "<->" {Equiv}
-+| "->" {Impl}
-+| "true" {TRUE}
-+| "false" {FALSE}
-+| "begin" {BEGIN}
-+| "end" {END}
-+| eof {EOF}
-+| proposition as p {Prop (int_of_string (String.sub p 1 (String.length p -1)))}
-+| _ as s { raise (SyntaxError  ("illegal character: " ^ (String.make 1 s))) }
++| ' ' | '\t' { next_token lexbuf }
++| '\n' | '\r' { newline lexbuf; next_token lexbuf }
++| "%" { comment lexbuf }
++| '<' 'r' (ident as id) '>' {
++    if id = "1" then Diamond 1
++    else raise (SyntaxError ("Unsupported relation r" ^ id ^ ". Only r1 is allowed."))
++  }
++| '[' 'r' (ident as id) ']' {
++    if id = "1" then Boxe 1
++    else raise (SyntaxError ("Unsupported relation r" ^ id ^ ". Only r1 is allowed."))
++  }
++| "(" { LPAR }
++| ")" { RPAR }
++| "~" { Not }
++| "&" { Conj }
++| "|" { Dij }
++| "<->" { Equiv }
++| "->" { Impl }
++| "true" { TRUE }
++| "false" { FALSE }
++| "begin" { BEGIN }
++| "end" { END }
++| eof { EOF }
++| proposition as p { Prop (int_of_string (String.sub p 1 (String.length p - 1))) }
++| _ as s { raise (SyntaxError ("illegal character: " ^ (String.make 1 s))) }
 +
 +and comment = parse
-+| '\n' {newline lexbuf; next_token lexbuf}
-+| eof {EOF}
-+| _ {comment lexbuf}
++| '\n' { newline lexbuf; next_token lexbuf }
++| eof { EOF }
++| _ { comment lexbuf }
 diff --git i/Verified-tableaux-for-K-KT-S4/src/main.ml w/Verified-tableaux-for-K-KT-S4/src/main.ml
 new file mode 100644
 index 0000000..7303058
@@ -113,17 +114,16 @@ index 0000000..7303058
 +;;
 diff --git i/Verified-tableaux-for-K-KT-S4/src/parser.mly w/Verified-tableaux-for-K-KT-S4/src/parser.mly
 new file mode 100644
-index 0000000..58e981a
+index 0000000..ef20ff4
 --- /dev/null
 +++ w/Verified-tableaux-for-K-KT-S4/src/parser.mly
-@@ -0,0 +1,50 @@
+@@ -0,0 +1,43 @@
 +%{
 +  open K
 +%}
 +
-+%token SEMICOLON
 +%token LPAR RPAR
-+%token Diamond Boxe
++%token <int> Diamond Boxe
 +%token TRUE FALSE
 +%token EOF
 +%token Conj
@@ -134,10 +134,11 @@ index 0000000..58e981a
 +%token BEGIN END
 +%token <int> Prop
 +
-+%right Conj
-+%right Dij
-+%right Impl
++// Precedence lowest to highest binding
 +%right Equiv
++%right Impl
++%right Dij
++%right Conj
 +%nonassoc Boxe Diamond Not
 +
 +%start file
@@ -146,27 +147,20 @@ index 0000000..58e981a
 +%%
 +
 +file :
-+| BEGIN; f = formulas ;END; EOF {f}
-+
-+formulas:
-+| f1 = formula; SEMICOLON; f2 = formulas {Andf (f1, f2)}
-+| f = formula {f}
++| BEGIN; f = formula; END; EOF { f }
 +
 +formula:
 +| TRUE {Orf (Varf "p", Negf (Varf "p"))}
 +| FALSE {Andf (Varf "p", Negf (Varf "p"))}
-+| f = atom {f}
++| p = Prop { Varf (string_of_int p) }
++| LPAR; f = formula; RPAR { f }
 +| Not; f = formula {Negf f}
-+| f1 = formula; Conj; f2 = formula {Andf (f1,f2)}
-+| f1 = formula; Dij; f2 = formula {Orf (f1,f2)}
-+| f1 = formula; Impl; f2 = formula {Implf (f1,f2)}
-+| f1 = formula; Equiv; f2 = formula {Andf (Implf (f1,f2), Implf (f2,f1))}
-+| Boxe; f = formula {Boxf f}
-+| Diamond; f = formula {Diaf f}
-+
-+atom:
-+| LPAR; f = formula; RPAR {f}
-+| i = Prop; {Varf (string_of_int i)}
++| f1 = formula; Conj; f2 = formula { Andf (f1,f2) }
++| f1 = formula; Dij; f2 = formula { Orf (f1,f2) }
++| f1 = formula; Impl; f2 = formula { Implf (f1,f2) }
++| f1 = formula; Equiv; f2 = formula { Andf (Implf (f1,f2), Implf (f2,f1)) }
++| Boxe; f = formula { Boxf f }
++| Diamond; f = formula { Diaf f }
 diff --git i/Verified-tableaux-for-K-KT-S4/theories/S4/extract.v w/Verified-tableaux-for-K-KT-S4/theories/S4/extract.v
 index 98f9433..c29e30b 100644
 --- i/Verified-tableaux-for-K-KT-S4/theories/S4/extract.v
