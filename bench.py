@@ -1,42 +1,119 @@
 from __future__ import annotations
 from abc import ABC, abstractmethod
+import argparse
 import logging
 import os
 from pathlib import Path
 import resource
 import signal
 import subprocess
-from typing import Callable, Literal
+from typing import Any, Callable, Literal
 import typing
+from pprint import pprint
 
 import owl
 
 
 def main():
-    logging.basicConfig(level=logging.DEBUG, format="[%(levelname)s] %(message)s")
-    time_limit = 1  # seconds
-    max_mem = 10 * (1024**3)  # 10 GiB
-    for c, best in Lwb.bench_solver(CoqK(time_limit, max_mem)).items():
-        print(f"{c}: {best}")
-    for c, best in Lwb.bench_solver(CegarBox(time_limit, max_mem)).items():
-        print(f"{c}: {best}")
-    for c, best in Lwb.bench_solver(Factpp(time_limit, max_mem)).items():
-        print(f"{c}: {best}")
-    for c, best in Lwb.bench_solver(Vct(time_limit, max_mem)).items():
-        print(f"{c}: {best}")
+    p = argparse.ArgumentParser()
+    p.add_argument(
+        "-t",
+        "--time-limit",
+        type=float,
+        default=1,
+        metavar="SECONDS",
+        help="(default: %(default)s s)",
+    )
+    p.add_argument(
+        "-m",
+        "--mem-limit",
+        type=float,
+        default=10,
+        metavar="GiB",
+        help="(default: %(default)s GiB)",
+    )
+    p.add_argument(
+        "-s",
+        "--solver",
+        choices=["cegarbox", "coqk", "fact++", "vct"],
+    )
+    p.add_argument(
+        "-b",
+        "--benchmark",
+        choices=["lwb"],
+    )
+    p.add_argument(
+        "-c",
+        "--category",
+        choices=Lwb.CATEGORIES,
+        metavar="LWB_CATEGORY",
+    )
+    p.add_argument(
+        "-l",
+        "--log-level",
+        choices=["DEBUG", "INFO", "WARNING", "ERROR"],
+        default="INFO",
+        help="(default: %(default)s)",
+    )
+
+    args = p.parse_args()
+    logging.basicConfig(level=args.log_level, format="[%(levelname)s] %(message)s")
+
+    if args.benchmark != "lwb" and args.category is not None:
+        p.error("category is only supported with the LWB benchmark")
+    if args.benchmark == "lwb" and args.category is not None:
+        args.benchmark = f"{args.benchmark}/{args.category}"
+
+    time_limit = args.time_limit
+    mem_limit = int(args.mem_limit * (1024**3))
+
+    solvers: dict[str, type[Solver]] = {
+        "cegarbox": CegarBox,
+        "coqk": CoqK,
+        "fact++": Factpp,
+        "vct": Vct,
+    }
+    benches: dict[str, Callable[[Solver], Any]] = {"lwb": Lwb.bench_solver} | {
+        f"lwb/{c}": lambda s: Lwb.bench_category(s, c) for c in Lwb.CATEGORIES
+    }
+
+    def run_and_print(bench: str, solver: str) -> None:
+        print(f"benchmarking {solver} against {bench}")
+        b = benches[bench]
+        s = solvers[solver]
+        pprint(b(s(time_limit, mem_limit)))
+
+    match (args.benchmark, args.solver):
+        case None, None:
+            for bench in benches:
+                for solver in solvers:
+                    run_and_print(bench, solver)
+        case None, solver:
+            for bench in benches:
+                run_and_print(bench, solver)
+        case bench, None:
+            for solver in solvers:
+                run_and_print(bench, solver)
+        case bench, solver:
+            run_and_print(bench, solver)
 
 
 class Solver(ABC):
-    def __init__(self, timeout_secs: int, mem_bytes: int) -> None:
+    def __init__(self, timeout_secs: float, mem_bytes: int) -> None:
         super().__init__()
         self.__timeout_secs = timeout_secs
         self.__mem_bytes = mem_bytes
 
     def spawn(self, args: list[str]) -> str:
+        stderr_pipe = (
+            None
+            if logging.getLogger().getEffectiveLevel() <= logging.DEBUG
+            else subprocess.DEVNULL
+        )
         p = subprocess.Popen(
             args,
             stdout=subprocess.PIPE,
-            stderr=subprocess.PIPE,
+            stderr=stderr_pipe,
             preexec_fn=lambda: resource.setrlimit(
                 resource.RLIMIT_AS, (self.__mem_bytes, self.__mem_bytes)
             ),
