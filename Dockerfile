@@ -38,7 +38,7 @@ RUN cmake ..
 RUN make -j$(nproc)
 
 # ===== Build vct (v1) =====
-FROM rocq/rocq-prover:9.1.1 AS build-rocq
+FROM rocq/rocq-prover:9.2.0 AS build-rocq
 RUN opam update && opam install -y dune menhir minisat rocq-equations
 
 WORKDIR /build
