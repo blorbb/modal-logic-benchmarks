@@ -61,8 +61,6 @@ def main():
 
     if args.benchmark != "lwb" and args.category is not None:
         p.error("category is only supported with the LWB benchmark")
-    if args.benchmark == "lwb" and args.category is not None:
-        args.benchmark = f"{args.benchmark}/{args.category}"
 
     time_limit = args.time_limit
     mem_limit = int(args.mem_limit * (1024**3))
@@ -73,9 +71,10 @@ def main():
         "fact++": Factpp,
         "vct": Vct,
     }
-    benches: dict[str, Callable[[Solver], Any]] = {"lwb": Lwb.bench_solver} | {
-        f"lwb/{c}": lambda s: Lwb.bench_category(s, c) for c in Lwb.CATEGORIES
-    }
+    benches: dict[str, Callable[[Solver], Any]] = {"lwb": Lwb.bench_solver}
+    if args.benchmark == "lwb" and args.category is not None:
+        args.benchmark = f"{args.benchmark}/{args.category}"
+        benches = {args.benchmark: lambda s: Lwb.bench_category(s, args.category)}
 
     def run_and_print(bench: str, solver: str) -> None:
         print(f"benchmarking {solver} against {bench}")
