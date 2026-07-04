@@ -120,6 +120,8 @@ class Solver(ABC):
         try:
             stdout, stderr = p.communicate(timeout=self.__timeout_secs)
         except subprocess.TimeoutExpired:
+            p.kill()
+            p.communicate()  # wait for the process to be fully freed
             raise TimeoutError("time out")
 
         if p.returncode == 0:
