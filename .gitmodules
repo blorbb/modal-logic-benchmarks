@@ -14,3 +14,7 @@
 	path = solvers/vct-v1
 	url = git@github.com:blorbb/vct.git
 	branch = v1-basic-sound-complete
+[submodule "solvers/vct-v2"]
+	path = solvers/vct-v2
+	url = git@github.com:blorbb/vct.git
+	branch = v2-formula-preprocess
