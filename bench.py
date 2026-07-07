@@ -25,6 +25,7 @@ def main():
     BENCHES: dict[str, Callable[[Solver], Any]] = {
         "lwb": Lwb.bench_solver,
         "mqbf": Mqbf.bench_solver,
+        "3cnf": Cnf3.bench_solver,
     }
 
     p = argparse.ArgumentParser()
@@ -350,11 +351,33 @@ class Mqbf:
                 try:
                     result = solver.solve(intohylo)
                 except DidNotSolve as e:
-                    logging.debug(f"failed due to {e}")
+                    logging.debug(f"{file.name}: failed due to {e}")
                     return completed
 
                 logging.debug(f"{file.name}: {'SAT' if result else 'UNSAT'}")
                 completed += 1
+
+        return completed
+
+
+class Cnf3:
+    @classmethod
+    def bench_solver(cls, solver: Solver) -> int:
+        dir = Path("./benches/3CNF")
+        completed = 0
+        for file in dir.iterdir():
+            # one of the files uses c<n> instead of p<n> for variables.
+            intohylo = file.read_text().replace("c", "p")
+
+            try:
+                result = solver.solve(intohylo)
+            except DidNotSolve as e:
+                logging.debug(f"{file.name}: failed due to {e}")
+                # 3CNF are not sorted by difficulty, so just count how many can be solved
+                continue
+
+            logging.debug(f"{file.name}: {'SAT' if result else 'UNSAT'}")
+            completed += 1
 
         return completed
 

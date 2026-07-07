@@ -83,6 +83,8 @@ RUN patch -p1 < ../lwb.patch
 
 WORKDIR /run/benches
 RUN mkdir MQBF && tar -xf MQBF.tgz -C MQBF
+# will already extract to 3CNF/
+RUN tar -xf 3CNF.tgz
 
 WORKDIR /run
 

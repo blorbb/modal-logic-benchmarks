@@ -56,3 +56,4 @@ Most solvers/benchmarks are included as submodules, so their original repositori
 The others are:
 
 - MQBF benchmarks: from [Cláudia Nalon](https://nalon.org/#software) ([direct download](https://nalon.org/software/MQBF.tgz)).
+- 3CNF benchmarks: also from [Cláudia Nalon](https://nalon.org/#software) ([direct download](https://nalon.org/software/3CNF.tgz)).
