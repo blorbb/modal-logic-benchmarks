@@ -49,3 +49,10 @@ If the submodule does not have an existing patch, the patch should also be appli
 ```dockerfile
 RUN patch -p1 < [dir].patch
 ```
+
+## Acknowledgements
+
+Most solvers/benchmarks are included as submodules, so their original repositories can be found through the submodule URL.
+The others are:
+
+- MQBF benchmarks: from [Cláudia Nalon](https://nalon.org/#software) ([direct download](https://nalon.org/software/MQBF.tgz)).

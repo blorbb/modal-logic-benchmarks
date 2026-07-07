@@ -53,6 +53,8 @@ RUN opam exec -- dune build ./bin/main.exe --release
 
 # ==== v2 ====
 FROM build-rocq AS build-vct-v2
+RUN opam install -y rocq-stdpp
+
 WORKDIR /build
 COPY --chown=rocq:rocq solvers/vct-v2 .
 
@@ -74,12 +76,17 @@ COPY --from=build-vct-v1 /build/src/_build/default/bin/main.exe ./vct-v1
 COPY --from=build-vct-v2 /build/src/_build/default/bin/main.exe ./vct-v2
 
 COPY benches ./benches
-COPY bench.py .
-COPY owl.py .
 
 # apply benchmark patches
 WORKDIR ./benches/lwb
 RUN patch -p1 < ../lwb.patch
+
+WORKDIR /run/benches
+RUN mkdir MQBF && tar -xf MQBF.tgz -C MQBF
+
 WORKDIR /run
+
+COPY bench.py .
+COPY owl.py .
 
 CMD ["python3", "./bench.py"]

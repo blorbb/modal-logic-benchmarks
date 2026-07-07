@@ -15,6 +15,18 @@ import owl
 
 
 def main():
+    SOLVERS: dict[str, type[Solver]] = {
+        "cegarbox": CegarBox,
+        "coqk": CoqK,
+        "fact++": Factpp,
+        "vct-v1": VctV1,
+        "vct-v2": VctV2,
+    }
+    BENCHES: dict[str, Callable[[Solver], Any]] = {
+        "lwb": Lwb.bench_solver,
+        "mqbf": Mqbf.bench_solver,
+    }
+
     p = argparse.ArgumentParser()
     p.add_argument(
         "-t",
@@ -35,18 +47,12 @@ def main():
     p.add_argument(
         "-s",
         "--solver",
-        choices=["cegarbox", "coqk", "fact++", "vct-v1", "vct-v2"],
+        choices=SOLVERS.keys(),
     )
     p.add_argument(
         "-b",
         "--benchmark",
-        choices=["lwb"],
-    )
-    p.add_argument(
-        "-c",
-        "--category",
-        choices=Lwb.CATEGORIES,
-        metavar="LWB_CATEGORY",
+        choices=BENCHES.keys(),
     )
     p.add_argument(
         "-l",
@@ -59,43 +65,40 @@ def main():
     args = p.parse_args()
     logging.basicConfig(level=args.log_level, format="[%(levelname)s] %(message)s")
 
-    if args.benchmark != "lwb" and args.category is not None:
-        p.error("category is only supported with the LWB benchmark")
-
     time_limit = args.time_limit
     mem_limit = int(args.mem_limit * (1024**3))
 
-    solvers: dict[str, type[Solver]] = {
-        "cegarbox": CegarBox,
-        "coqk": CoqK,
-        "fact++": Factpp,
-        "vct-v1": VctV1,
-        "vct-v2": VctV2,
-    }
-    benches: dict[str, Callable[[Solver], Any]] = {"lwb": Lwb.bench_solver}
-    if args.benchmark == "lwb" and args.category is not None:
-        args.benchmark = f"{args.benchmark}/{args.category}"
-        benches = {args.benchmark: lambda s: Lwb.bench_category(s, args.category)}
-
     def run_and_print(bench: str, solver: str) -> None:
         print(f"benchmarking {solver} against {bench}")
-        b = benches[bench]
-        s = solvers[solver]
+        b = BENCHES[bench]
+        s = SOLVERS[solver]
         pprint(b(s(time_limit, mem_limit)))
 
     match (args.benchmark, args.solver):
         case None, None:
-            for bench in benches:
-                for solver in solvers:
+            for bench in BENCHES:
+                for solver in SOLVERS:
                     run_and_print(bench, solver)
         case None, solver:
-            for bench in benches:
+            for bench in BENCHES:
                 run_and_print(bench, solver)
         case bench, None:
-            for solver in solvers:
+            for solver in SOLVERS:
                 run_and_print(bench, solver)
         case bench, solver:
             run_and_print(bench, solver)
+
+
+class DidNotSolve(Exception):
+    """Solver failed to solve the problem instance."""
+
+    pass
+
+
+class IncorrectOutput(Exception):
+    """Solver gave an incorrect answer."""
+
+    pass
 
 
 class Solver(ABC):
@@ -105,15 +108,10 @@ class Solver(ABC):
         self.__mem_bytes = mem_bytes
 
     def spawn(self, args: list[str]) -> str:
-        stderr_pipe = (
-            None
-            if logging.getLogger().getEffectiveLevel() <= logging.DEBUG
-            else subprocess.DEVNULL
-        )
         p = subprocess.Popen(
             args,
             stdout=subprocess.PIPE,
-            stderr=stderr_pipe,
+            stderr=subprocess.PIPE,
             preexec_fn=lambda: resource.setrlimit(
                 resource.RLIMIT_AS, (self.__mem_bytes, self.__mem_bytes)
             ),
@@ -123,23 +121,26 @@ class Solver(ABC):
         except subprocess.TimeoutExpired:
             p.kill()
             p.communicate()  # wait for the process to be fully freed
-            raise TimeoutError("time out")
+            raise DidNotSolve("time out")
 
         if p.returncode == 0:
             return stdout.decode("utf-8")
         elif p.returncode == -signal.SIGABRT:
-            raise MemoryError("OOM")
+            raise DidNotSolve("OOM")
         else:
-            raise ChildProcessError(
-                f"something went wrong: error {p.returncode}\n{stderr}"
+            stdout = stdout.decode()
+            stderr = stderr.decode()
+            logging.warning(
+                f"something went wrong: error {p.returncode}\nstdout:\n{stdout}\nstderr:\n{stderr}"
             )
+            raise DidNotSolve(stderr)
 
     @abstractmethod
     def solve(self, intohylo: str) -> bool:
         """Runs the solver and returns whether the result was SAT or not.
 
         The solver should be ran using `self.spawn`, which raises
-        a `TimeoutError` or `MemoryError`."""
+        a `SolverError`."""
 
 
 class CoqK(Solver):
@@ -151,7 +152,7 @@ class CoqK(Solver):
         elif out == "UNSAT":
             return False
         else:
-            raise ChildProcessError(f"malformed output:\n{out}")
+            raise IncorrectOutput(f"malformed output:\n{out}")
 
 
 class CegarBox(Solver):
@@ -166,7 +167,7 @@ class CegarBox(Solver):
         elif out == "Unsatisfiable":
             return False
         else:
-            raise ChildProcessError(f"malformed output:\n{out}")
+            raise IncorrectOutput(f"malformed output:\n{out}")
 
 
 class Factpp(Solver):
@@ -191,7 +192,7 @@ class Factpp(Solver):
         elif "is unsatisfiable w.r.t. TBox" in out:
             return False
         else:
-            raise ChildProcessError(f"malformed output:\n{out}")
+            raise IncorrectOutput(f"malformed output:\n{out}")
 
 
 class Vct(Solver):
@@ -207,7 +208,7 @@ class Vct(Solver):
         elif out == "UNSAT":
             return False
         else:
-            raise ChildProcessError(f"malformed output:\n{out}")
+            raise IncorrectOutput(f"malformed output:\n{out}")
 
 
 class VctV1(Vct):
@@ -307,18 +308,55 @@ class Lwb:
         def solve_single(i: int):
             try:
                 result = solver.solve(cls.generate_intohylo(c, i))
-            except (TimeoutError, MemoryError) as e:
+            except DidNotSolve as e:
                 logging.debug(f"failed due to {e}")
                 return False
 
             if result == should_be_sat:
                 return True
             else:
-                raise ChildProcessError(
+                raise IncorrectOutput(
                     f"result of solving {c} #{i} should be {should_be_sat}, got {result}"
                 )
 
         return max_solves(solve_single)
+
+
+class Mqbf:
+    type Category = Literal["qbf", "qbfL", "qbfML", "qbfMS", "qbfS"]
+    CATEGORIES: tuple[Category, ...] = typing.get_args(Category.__value__)
+
+    @classmethod
+    def bench_solver(cls, solver: Solver) -> dict[Mqbf.Category, int]:
+        max_solves = dict[Mqbf.Category, int]()
+
+        for c in cls.CATEGORIES:
+            logging.debug(f"finding max for {c}")
+            max_solves[c] = cls.bench_category(solver, c)
+
+        return max_solves
+
+    @classmethod
+    def bench_category(cls, solver: Solver, c: Category) -> int:
+        dir = Path(f"./benches/MQBF/{c}")
+        completed = 0
+        # within each category, there are directories of increasing difficulty
+        # which are in alphabetical order.
+        for subdir in sorted(dir.iterdir()):
+            for file in sorted(subdir.iterdir()):
+                # slight variation of InToHyLo, variables are prefixed with
+                # v instead of p.
+                intohylo = file.read_text().replace("v", "p")
+                try:
+                    result = solver.solve(intohylo)
+                except DidNotSolve as e:
+                    logging.debug(f"failed due to {e}")
+                    return completed
+
+                logging.debug(f"{file.name}: {'SAT' if result else 'UNSAT'}")
+                completed += 1
+
+        return completed
 
 
 if __name__ == "__main__":
