@@ -1,0 +1,23 @@
+In this directory, the file
+
+all.conf
+
+contains some of the available options for KSP.
+
+The following files:
+
+cord.conf
+negative.conf
+negative_ordered.conf
+ordered.conf
+plain.conf
+positive.conf
+
+contain the configurations used for the evaluation of KSP (IJCAR 2016 paper). The files in "jar-2020" were used for the evalution in the submission to the JAR paper. The files in "cade-28" were used for the evaluation in the submission to CADE-28 (2021). The files in "ijcar-2022" were used in the experimentation in the submissions for IJCAR 2022 and CADE-29. Some other examples are given here:
+
+cord_early_mlple.conf
+ordered_selection.conf
+cord_s4_simp.conf
+
+
+

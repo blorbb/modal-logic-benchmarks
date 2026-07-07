@@ -57,3 +57,5 @@ The others are:
 
 - MQBF benchmarks: from [Cláudia Nalon](https://nalon.org/#software) ([direct download](https://nalon.org/software/MQBF.tgz)).
 - 3CNF benchmarks: also from [Cláudia Nalon](https://nalon.org/#software) ([direct download](https://nalon.org/software/3CNF.tgz)).
+- KSP solver: also from [Cláudia Nalon](https://nalon.org/#software), version 0.1.6 CADE-29 (final) ([direct download](https://nalon.org/software/ksp-0.1.6.tar.gz)).
+  I have removed the `examples/` directory.

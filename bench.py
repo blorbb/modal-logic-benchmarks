@@ -19,14 +19,22 @@ def main():
         "cegarbox": CegarBox,
         "coqk": CoqK,
         "fact++": Factpp,
+        "ksp": Ksp,
         "vct-v1": VctV1,
         "vct-v2": VctV2,
     }
-    BENCHES: dict[str, Callable[[Solver], Any]] = {
-        "lwb": Lwb.bench_solver,
-        "mqbf": Mqbf.bench_solver,
-        "3cnf": Cnf3.bench_solver,
-    }
+    BENCHES: dict[str, Callable[[Solver], Any]] = (
+        {
+            "lwb": Lwb.bench_solver,
+            "mqbf": Mqbf.bench_solver,
+            "3cnf": Cnf3.bench_solver,
+        }
+        | {f"lwb/{c}": lambda s, c=c: Lwb.bench_category(s, c) for c in Lwb.CATEGORIES}
+        | {
+            f"mqbf/{c}": lambda s, c=c: Mqbf.bench_category(s, c)
+            for c in Mqbf.CATEGORIES
+        }
+    )
 
     p = argparse.ArgumentParser()
     p.add_argument(
@@ -68,6 +76,9 @@ def main():
 
     time_limit = args.time_limit
     mem_limit = int(args.mem_limit * (1024**3))
+
+    if args.benchmark is None:
+        BENCHES = {k: v for k, v in BENCHES.items() if "/" not in k}
 
     def run_and_print(bench: str, solver: str) -> None:
         print(f"benchmarking {solver} against {bench}")
@@ -159,8 +170,14 @@ class CoqK(Solver):
 class CegarBox(Solver):
     def solve(self, intohylo: str) -> bool:
         # input format is slightly different to intohylo
-        [_start, formula, _end] = intohylo.strip().splitlines()
-        formula = formula.replace("[r1]", "[]").replace("<r1>", "<>")
+        formula = (
+            intohylo.strip()
+            .removeprefix("begin")
+            .removesuffix("end")
+            .replace("[r1]", "[]")
+            .replace("<r1>", "<>")
+            .strip()
+        )
         Path("./bench.fml").write_text(formula)
         out = self.spawn(["./CEGARBox", "./bench.fml"]).strip()
         if out == "Satisfiable":
@@ -191,6 +208,32 @@ class Factpp(Solver):
         if "is satisfiable w.r.t. TBox" in out:
             return True
         elif "is unsatisfiable w.r.t. TBox" in out:
+            return False
+        else:
+            raise IncorrectOutput(f"malformed output:\n{out}")
+
+
+class Ksp(Solver):
+    def solve(self, intohylo: str) -> bool:
+        # See ksp/USAGE for formula format. Same as CEGARBox.
+        formula = (
+            intohylo.strip()
+            .removeprefix("begin")
+            .removesuffix("end")
+            .replace("[r1]", "[]")
+            .replace("<r1>", "<>")
+            .strip()
+        )
+        formula = f"sos(formulas).\n{formula}.\nend_of_list."
+        Path("./bench.ksp").write_text(formula)
+
+        # See Dockerfile for which config this ksp.conf is.
+        out = self.spawn(["./ksp", "-c", "./ksp.conf", "-i", "./bench.ksp"]).strip()
+
+        # sometimes prints some extra info (solved during preprocessing)
+        if "Satisfiable." in out:
+            return True
+        elif "Unsatisfiable." in out:
             return False
         else:
             raise IncorrectOutput(f"malformed output:\n{out}")
