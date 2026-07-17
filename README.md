@@ -6,6 +6,8 @@ Requires docker and docker-buildx (optional, remove `buildx` from docker build c
 
 ## Building
 
+(Alternatively, if you have [just](https://github.com/casey/just) installed, a Justfile is provided with common commands)
+
 ```sh
 git submodule update --init --recursive --no-fetch --depth 1
 docker buildx build -t benchmarks .
