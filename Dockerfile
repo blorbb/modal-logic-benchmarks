@@ -63,7 +63,7 @@ RUN opam exec -- dune build ./bin/main.exe --release
 
 # ==== v2 ====
 FROM build-rocq AS build-vct-v2
-RUN opam install -y rocq-stdpp
+RUN opam install -y ppx_inline_test
 
 WORKDIR /build
 COPY --chown=rocq:rocq solvers/vct-v2 .
