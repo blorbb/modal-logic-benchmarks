@@ -48,25 +48,11 @@ COPY solvers/ksp-0.1.6/ .
 RUN make -j$(nproc)
 
 # ===== Build vct =====
-FROM rocq/rocq-prover:9.2.0 AS build-rocq
-RUN opam update && opam install -y dune menhir minisat rocq-equations
-
-# ==== v1 ====
-FROM build-rocq AS build-vct-v1
-WORKDIR /build
-COPY --chown=rocq:rocq solvers/vct-v1 .
-
-RUN opam exec -- make clean && make
-
-WORKDIR /build/src
-RUN opam exec -- dune build ./bin/main.exe --release
-
-# ==== v2 ====
-FROM build-rocq AS build-vct-v2
-RUN opam install -y ppx_inline_test
+FROM rocq/rocq-prover:9.2.0 AS build-vct
+RUN opam update && opam install -y dune menhir minisat rocq-equations ppx_inline_test
 
 WORKDIR /build
-COPY --chown=rocq:rocq solvers/vct-v2 .
+COPY --chown=rocq:rocq solvers/vct .
 
 RUN opam exec -- make clean && make
 
@@ -84,8 +70,7 @@ COPY --from=build-cegar /build/dist/build/CEGARBox/CEGARBox .
 COPY --from=build-coq /build/Verified-tableaux-for-K-KT-S4/src/_build/default/main.exe ./coqk
 COPY --from=build-factpp /build/target/FaCT++/FaCT++ .
 COPY --from=build-ksp /build/ksp .
-COPY --from=build-vct-v1 /build/src/_build/default/bin/main.exe ./vct-v1
-COPY --from=build-vct-v2 /build/src/_build/default/bin/main.exe ./vct-v2
+COPY --from=build-vct /build/src/_build/default/bin/main.exe ./vct
 
 COPY benches ./benches
 

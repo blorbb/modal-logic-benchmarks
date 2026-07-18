@@ -20,8 +20,7 @@ def main():
         "coqk": CoqK,
         "fact++": Factpp,
         "ksp": Ksp,
-        "vct-v1": VctV1,
-        "vct-v2": VctV2,
+        "vct": Vct,
     }
     BENCHES: dict[str, Callable[[Solver], Any]] = (
         {
@@ -240,31 +239,15 @@ class Ksp(Solver):
 
 
 class Vct(Solver):
-    @classmethod
-    @abstractmethod
-    def bin_path(cls) -> str: ...
-
     def solve(self, intohylo: str) -> bool:
         Path("./bench.intohylo").write_text(intohylo)
-        out = self.spawn([self.bin_path(), "./bench.intohylo"]).strip()
+        out = self.spawn(["./vct", "./bench.intohylo"]).strip()
         if out == "SAT":
             return True
         elif out == "UNSAT":
             return False
         else:
             raise IncorrectOutput(f"malformed output:\n{out}")
-
-
-class VctV1(Vct):
-    @classmethod
-    def bin_path(cls) -> str:
-        return "./vct-v1"
-
-
-class VctV2(Vct):
-    @classmethod
-    def bin_path(cls) -> str:
-        return "./vct-v2"
 
 
 def max_solves(pred: Callable[[int], bool]) -> int:
