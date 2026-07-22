@@ -13,3 +13,4 @@
 [submodule "solvers/vct"]
 	path = solvers/vct
 	url = git@github.com:blorbb/vct.git
+  branch = v2-formula-preprocess

@@ -7,11 +7,24 @@ from pathlib import Path
 import resource
 import signal
 import subprocess
+import time
 from typing import Any, Callable, Literal
 import typing
-from pprint import pprint
 
 import owl
+
+
+def log_run(
+    solver: str,
+    problem: str,
+    result: Literal["SAT", "UNSAT", "TLE", "MLE", "UNKNOWN"],
+    elapsed: float,
+    stdout="",
+    stderr="",
+):
+    print(
+        "\t".join([solver, problem, result, str(elapsed), repr(stdout), repr(stderr)])
+    )
 
 
 def main():
@@ -48,7 +61,7 @@ def main():
         "-m",
         "--mem-limit",
         type=float,
-        default=10,
+        default=16,
         metavar="GiB",
         help="(default: %(default)s GiB)",
     )
@@ -66,7 +79,7 @@ def main():
         "-l",
         "--log-level",
         choices=["DEBUG", "INFO", "WARNING", "ERROR"],
-        default="INFO",
+        default="WARNING",
         help="(default: %(default)s)",
     )
 
@@ -79,37 +92,25 @@ def main():
     if args.benchmark is None:
         BENCHES = {k: v for k, v in BENCHES.items() if "/" not in k}
 
-    def run_and_print(bench: str, solver: str) -> None:
-        print(f"benchmarking {solver} against {bench}")
+    def run(bench: str, solver: str) -> None:
+        logging.info(f"benchmarking {solver} against {bench}")
         b = BENCHES[bench]
         s = SOLVERS[solver]
-        pprint(b(s(time_limit, mem_limit)))
+        logging.info(b(s(time_limit, mem_limit)))
 
     match (args.benchmark, args.solver):
         case None, None:
             for bench in BENCHES:
                 for solver in SOLVERS:
-                    run_and_print(bench, solver)
+                    run(bench, solver)
         case None, solver:
             for bench in BENCHES:
-                run_and_print(bench, solver)
+                run(bench, solver)
         case bench, None:
             for solver in SOLVERS:
-                run_and_print(bench, solver)
+                run(bench, solver)
         case bench, solver:
-            run_and_print(bench, solver)
-
-
-class DidNotSolve(Exception):
-    """Solver failed to solve the problem instance."""
-
-    pass
-
-
-class IncorrectOutput(Exception):
-    """Solver gave an incorrect answer."""
-
-    pass
+            run(bench, solver)
 
 
 class Solver(ABC):
@@ -118,58 +119,94 @@ class Solver(ABC):
         self.__timeout_secs = timeout_secs
         self.__mem_bytes = mem_bytes
 
-    def spawn(self, args: list[str]) -> str:
+    @abstractmethod
+    def name(self) -> str: ...
+
+    @abstractmethod
+    def convert(self, intohylo: str) -> str: ...
+
+    @abstractmethod
+    def run_args(self, bench_path: str) -> list[str]: ...
+
+    @abstractmethod
+    def interpret_output(self, output: str) -> Literal["SAT", "UNSAT", "UNKNOWN"]: ...
+
+    def solve(self, problem: str, intohylo: str) -> bool:
+        """Runs the solver and returns whether the solver managed to solve
+        the problem within the time/memory limits."""
+
+        solver_format = self.convert(intohylo)
+        Path("./input.txt").write_text(solver_format)
+        args = self.run_args("./input.txt")
+
+        start_time = time.time()
         p = subprocess.Popen(
             args,
             stdout=subprocess.PIPE,
             stderr=subprocess.PIPE,
+            text=True,
             preexec_fn=lambda: resource.setrlimit(
                 resource.RLIMIT_AS, (self.__mem_bytes, self.__mem_bytes)
             ),
         )
+
         try:
             stdout, stderr = p.communicate(timeout=self.__timeout_secs)
         except subprocess.TimeoutExpired:
+            elapsed = time.time() - start_time
             p.kill()
             p.communicate()  # wait for the process to be fully freed
-            raise DidNotSolve("time out")
+            log_run(
+                solver=self.name(),
+                problem=problem,
+                result="TLE",
+                elapsed=elapsed,
+            )
+            return False
+
+        elapsed = time.time() - start_time
 
         if p.returncode == 0:
-            return stdout.decode("utf-8")
+            result = self.interpret_output(stdout.strip())
         elif p.returncode == -signal.SIGABRT:
-            raise DidNotSolve("OOM")
+            result = "MLE"
         else:
-            stdout = stdout.decode()
-            stderr = stderr.decode()
-            logging.warning(
-                f"something went wrong: error {p.returncode}\nstdout:\n{stdout}\nstderr:\n{stderr}"
-            )
-            raise DidNotSolve(stderr)
+            result = "UNKNOWN"
 
-    @abstractmethod
-    def solve(self, intohylo: str) -> bool:
-        """Runs the solver and returns whether the result was SAT or not.
-
-        The solver should be ran using `self.spawn`, which raises
-        a `SolverError`."""
+        log_run(
+            solver=self.name(),
+            problem=problem,
+            result=result,
+            elapsed=elapsed,
+            stdout=stdout,
+            stderr=stderr,
+        )
+        return result in ("SAT", "UNSAT")
 
 
 class CoqK(Solver):
-    def solve(self, intohylo: str) -> bool:
-        Path("./bench.intohylo").write_text(intohylo)
-        out = self.spawn(["./coqk", "./bench.intohylo"]).strip()
-        if out == "SAT":
-            return True
-        elif out == "UNSAT":
-            return False
+    def name(self) -> str:
+        return "coqk"
+
+    def convert(self, intohylo: str) -> str:
+        return intohylo
+
+    def run_args(self, bench_path: str) -> list[str]:
+        return ["./coqk", bench_path]
+
+    def interpret_output(self, output: str) -> Literal["SAT", "UNSAT", "UNKNOWN"]:
+        if output in ("SAT", "UNSAT"):
+            return output
         else:
-            raise IncorrectOutput(f"malformed output:\n{out}")
+            return "UNKNOWN"
 
 
 class CegarBox(Solver):
-    def solve(self, intohylo: str) -> bool:
-        # input format is slightly different to intohylo
-        formula = (
+    def name(self) -> str:
+        return "cegarbox"
+
+    def convert(self, intohylo: str) -> str:
+        return (
             intohylo.strip()
             .removeprefix("begin")
             .removesuffix("end")
@@ -177,20 +214,28 @@ class CegarBox(Solver):
             .replace("<r1>", "<>")
             .strip()
         )
-        Path("./bench.fml").write_text(formula)
-        out = self.spawn(["./CEGARBox", "./bench.fml"]).strip()
-        if out == "Satisfiable":
-            return True
-        elif out == "Unsatisfiable":
-            return False
+
+    def run_args(self, bench_path: str) -> list[str]:
+        return ["./CEGARBox", bench_path]
+
+    def interpret_output(self, output: str) -> Literal["SAT", "UNSAT", "UNKNOWN"]:
+        if output == "Satisfiable":
+            return "SAT"
+        elif output == "Unsatisfiable":
+            return "UNSAT"
         else:
-            raise IncorrectOutput(f"malformed output:\n{out}")
+            return "UNKNOWN"
 
 
 class Factpp(Solver):
-    def solve(self, intohylo: str) -> bool:
-        owl_str = owl.from_intohylo(intohylo)
-        fact_conf = """
+    def name(self) -> str:
+        return "fact++"
+
+    def convert(self, intohylo: str) -> str:
+        return owl.from_intohylo(intohylo)
+
+    def run_args(self, bench_path: str) -> list[str]:
+        fact_conf = f"""
 [LeveLogger]
     file = reasoning.log
     allowedLevel = 0
@@ -199,21 +244,25 @@ class Factpp(Solver):
 
 [Query]
     Target = D0
-    TBox = bench.tbox
+    TBox = {bench_path}
 """
         Path("fact.conf").write_text(fact_conf)
-        Path("bench.tbox").write_text(owl_str)
-        out = self.spawn(["./FaCT++", "./fact.conf"])
-        if "is satisfiable w.r.t. TBox" in out:
-            return True
-        elif "is unsatisfiable w.r.t. TBox" in out:
-            return False
+        return ["./FaCT++", "./fact.conf"]
+
+    def interpret_output(self, output: str) -> Literal["SAT", "UNSAT", "UNKNOWN"]:
+        if "is satisfiable w.r.t. TBox" in output:
+            return "SAT"
+        elif "is unsatisfiable w.r.t. TBox" in output:
+            return "UNSAT"
         else:
-            raise IncorrectOutput(f"malformed output:\n{out}")
+            return "UNKNOWN"
 
 
 class Ksp(Solver):
-    def solve(self, intohylo: str) -> bool:
+    def name(self) -> str:
+        return "ksp"
+
+    def convert(self, intohylo: str) -> str:
         # See ksp/USAGE for formula format. Same as CEGARBox.
         formula = (
             intohylo.strip()
@@ -223,31 +272,39 @@ class Ksp(Solver):
             .replace("<r1>", "<>")
             .strip()
         )
-        formula = f"sos(formulas).\n{formula}.\nend_of_list."
-        Path("./bench.ksp").write_text(formula)
+        return f"sos(formulas).\n{formula}.\nend_of_list."
 
+    def run_args(self, bench_path: str) -> list[str]:
         # See Dockerfile for which config this ksp.conf is.
-        out = self.spawn(["./ksp", "-c", "./ksp.conf", "-i", "./bench.ksp"]).strip()
+        return ["./ksp", "-c", "./ksp.conf", "-i", bench_path]
 
+    def interpret_output(self, output: str) -> Literal["SAT", "UNSAT", "UNKNOWN"]:
         # sometimes prints some extra info (solved during preprocessing)
-        if "Satisfiable." in out:
-            return True
-        elif "Unsatisfiable." in out:
-            return False
+        if "Satisfiable." in output:
+            return "SAT"
+        elif "Unsatisfiable." in output:
+            return "UNSAT"
         else:
-            raise IncorrectOutput(f"malformed output:\n{out}")
+            return "UNKNOWN"
 
 
 class Vct(Solver):
-    def solve(self, intohylo: str) -> bool:
-        Path("./bench.intohylo").write_text(intohylo)
-        out = self.spawn(["./vct", "./bench.intohylo"]).strip()
-        if out == "SAT":
-            return True
-        elif out == "UNSAT":
-            return False
+    def name(self) -> str:
+        return "vct"
+
+    def convert(self, intohylo: str) -> str:
+        return intohylo
+
+    def run_args(self, bench_path: str) -> list[str]:
+        return ["./vct", bench_path]
+
+    def interpret_output(self, output: str) -> Literal["SAT", "UNSAT", "UNKNOWN"]:
+        if output == "SAT":
+            return "SAT"
+        elif output == "UNSAT":
+            return "UNSAT"
         else:
-            raise IncorrectOutput(f"malformed output:\n{out}")
+            return "UNKNOWN"
 
 
 def max_solves(pred: Callable[[int], bool]) -> int:
@@ -310,13 +367,21 @@ class Lwb:
             pass
 
         index = str(difficulty)
-        subprocess.run(
-            ["python", "./benches/lwb/generate.py", category, index, index, "1"],
-            stdout=subprocess.DEVNULL,
-            check=True,
-        )
-        path = f"./temp_target/{category}.{index.rjust(4, '0')}.intohylo"
-        return Path(path).read_text()
+        path = Path(f"./temp_target/{category}.{index.rjust(4, '0')}.intohylo")
+        # check if previously generated already
+        try:
+            txt = path.read_text()
+            if txt.strip() == "":
+                raise FileNotFoundError()
+            logging.debug("using existing lwb instance")
+            return txt
+        except FileNotFoundError:
+            subprocess.run(
+                ["python", "./benches/lwb/generate.py", category, index, index, "1"],
+                stdout=subprocess.DEVNULL,
+                check=True,
+            )
+        return path.read_text()
 
     @classmethod
     def bench_solver(cls, solver: Solver) -> dict[Category, int]:
@@ -330,21 +395,8 @@ class Lwb:
 
     @classmethod
     def bench_category(cls, solver: Solver, c: Category) -> int:
-        should_be_sat = c.endswith("n")
-
         def solve_single(i: int):
-            try:
-                result = solver.solve(cls.generate_intohylo(c, i))
-            except DidNotSolve as e:
-                logging.debug(f"failed due to {e}")
-                return False
-
-            if result == should_be_sat:
-                return True
-            else:
-                raise IncorrectOutput(
-                    f"result of solving {c} #{i} should be {should_be_sat}, got {result}"
-                )
+            return solver.solve(f"lwb/{c}/{i:04}", cls.generate_intohylo(c, i))
 
         return max_solves(solve_single)
 
@@ -367,21 +419,12 @@ class Mqbf:
     def bench_category(cls, solver: Solver, c: Category) -> int:
         dir = Path(f"./benches/MQBF/{c}")
         completed = 0
-        # within each category, there are directories of increasing difficulty
-        # which are in alphabetical order.
         for subdir in sorted(dir.iterdir()):
             for file in sorted(subdir.iterdir()):
                 # slight variation of InToHyLo, variables are prefixed with
                 # v instead of p.
                 intohylo = file.read_text().replace("v", "p")
-                try:
-                    result = solver.solve(intohylo)
-                except DidNotSolve as e:
-                    logging.debug(f"{file.name}: failed due to {e}")
-                    return completed
-
-                logging.debug(f"{file.name}: {'SAT' if result else 'UNSAT'}")
-                completed += 1
+                completed += solver.solve(f"mqbf/{c}/{file.stem}", intohylo)
 
         return completed
 
@@ -394,16 +437,7 @@ class Cnf3:
         for file in dir.iterdir():
             # one of the files uses c<n> instead of p<n> for variables.
             intohylo = file.read_text().replace("c", "p")
-
-            try:
-                result = solver.solve(intohylo)
-            except DidNotSolve as e:
-                logging.debug(f"{file.name}: failed due to {e}")
-                # 3CNF are not sorted by difficulty, so just count how many can be solved
-                continue
-
-            logging.debug(f"{file.name}: {'SAT' if result else 'UNSAT'}")
-            completed += 1
+            completed += solver.solve(f"3cnf/{file.stem}", intohylo)
 
         return completed
 
