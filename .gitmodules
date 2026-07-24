@@ -14,3 +14,6 @@
 	path = solvers/vct
 	url = git@github.com:blorbb/vct.git
   branch = v2-formula-preprocess
+[submodule "solvers/CEGARBoxCPP"]
+	path = solvers/CEGARBoxCPP
+	url = git@github.com:cormackikkert/CEGARBoxCPP.git

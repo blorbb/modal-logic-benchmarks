@@ -8,6 +8,24 @@ RUN cabal update && cabal install --only-dependencies
 RUN cabal configure
 RUN cabal build
 
+# Build CEGARBoxCPP
+# instructions copied from their README
+# TODO: performance seems to be the same as just copying the existing kaleidoscope binary.
+FROM ubuntu:22.04 AS build-cegarboxpp
+RUN apt-get update && apt-get install -y build-essential wget unzip tar cmake libz-dev libgoogle-glog-dev
+RUN apt-get install -y git
+
+COPY solvers/CEGARBoxCPP /build
+WORKDIR /build
+
+RUN git clone https://github.com/agurfinkel/minisat.git && cd minisat && make config prefix=/usr && make install
+RUN wget https://nalon.org/software/ltl2snf-0.1.0.tar.gz && tar xzf ltl2snf-0.1.0.tar.gz && cd ltl2snf-0.1.0 && make && mv ./ltl2snf ../ && cd .. && rm -rf ltl2snf-0.1.0*
+RUN export ANTLR_DIR=/antlr4 && wget https://www.antlr.org/download/antlr4-cpp-runtime-4.13.0-source.zip && \
+  mkdir -p $ANTLR_DIR && unzip -q antlr4-cpp-runtime-4.13.0-source.zip -d $ANTLR_DIR && \
+  mkdir -p $ANTLR_DIR/build $ANTLR_DIR/run && cd $ANTLR_DIR/build && cmake .. && make install
+
+RUN make
+
 # ===== Build Coq tableaux =====
 FROM coqorg/coq:8.17.1 AS build-coq
 RUN opam update && opam install -y dune menhir
@@ -71,6 +89,7 @@ COPY --from=build-coq /build/Verified-tableaux-for-K-KT-S4/src/_build/default/ma
 COPY --from=build-factpp /build/target/FaCT++/FaCT++ .
 COPY --from=build-ksp /build/ksp .
 COPY --from=build-vct /build/src/_build/default/bin/main.exe ./vct
+COPY --from=build-cegarboxpp /build/kaleidoscope ./cegarboxpp
 
 COPY benches ./benches
 

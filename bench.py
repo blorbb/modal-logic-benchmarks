@@ -30,6 +30,7 @@ def log_run(
 def main():
     SOLVERS: dict[str, type[Solver]] = {
         "cegarbox": CegarBox,
+        "cegarbox++": CegarBoxpp,
         "coqk": CoqK,
         "fact++": Factpp,
         "ksp": Ksp,
@@ -217,6 +218,36 @@ class CegarBox(Solver):
 
     def run_args(self, bench_path: str) -> list[str]:
         return ["./CEGARBox", bench_path]
+
+    def interpret_output(self, output: str) -> Literal["SAT", "UNSAT", "UNKNOWN"]:
+        if output == "Satisfiable":
+            return "SAT"
+        elif output == "Unsatisfiable":
+            return "UNSAT"
+        else:
+            return "UNKNOWN"
+
+
+class CegarBoxpp(Solver):
+    def name(self) -> str:
+        return "cegarbox++"
+
+    def convert(self, intohylo: str) -> str:
+        return (
+            intohylo.strip()
+            .removeprefix("begin")
+            .removesuffix("end")
+            .replace("[r1]", "[]")
+            .replace("<r1>", "<>")
+            .replace("->", "=>")
+            .replace("<->", "<=>")
+            .replace("true", "$true")
+            .replace("false", "$false")
+            .strip()
+        )
+
+    def run_args(self, bench_path: str) -> list[str]:
+        return ["./cegarboxpp", "-f", bench_path]
 
     def interpret_output(self, output: str) -> Literal["SAT", "UNSAT", "UNKNOWN"]:
         if output == "Satisfiable":
