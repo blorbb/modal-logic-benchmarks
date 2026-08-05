@@ -14,7 +14,7 @@ build:
 
 # Run docker container using existing build
 run-nobuild *args:
-    docker run -t -v "$(pwd)/lwb-instances:/run/temp_target" --ulimit stack=67108864:67108864 benchmarks python bench.py {{ args }}
+    docker run -t -v "$(pwd)/lwb-instances:/run/temp_target" --ulimit stack=134217728:134217728 benchmarks python bench.py {{ args }}
 
 # Build and run docker container
 run *args: build (run-nobuild args)
