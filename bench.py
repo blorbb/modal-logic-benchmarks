@@ -40,6 +40,8 @@ def main():
             "lwb": Lwb.bench_solver,
             "mqbf": Mqbf.bench_solver,
             "3cnf": Cnf3.bench_solver,
+            "3cnfd3": Cnf3d3.bench_solver,
+            "3cnfd5": Cnf3d5.bench_solver,
         }
         | {f"lwb/{c}": lambda s, c=c: Lwb.bench_category(s, c) for c in Lwb.CATEGORIES}  # pyright: ignore[reportArgumentType]
         | {
@@ -476,6 +478,30 @@ class Cnf3:
             # one of the files uses c<n> instead of p<n> for variables.
             intohylo = file.read_text().replace("c", "p")
             completed += solver.solve(f"3cnf/{file.stem}", intohylo)
+
+        return completed
+
+
+class Cnf3d3:
+    @classmethod
+    def bench_solver(cls, solver: Solver) -> int:
+        dir = Path("./benches/3CNFd3")
+        completed = 0
+        for file in dir.iterdir():
+            intohylo = "begin " + file.read_text() + " end"
+            completed += solver.solve(f"3cnfd3/{file.stem}", intohylo)
+
+        return completed
+
+
+class Cnf3d5:
+    @classmethod
+    def bench_solver(cls, solver: Solver) -> int:
+        dir = Path("./benches/3CNFd5")
+        completed = 0
+        for file in dir.iterdir():
+            intohylo = "begin " + file.read_text() + " end"
+            completed += solver.solve(f"3cnfd5/{file.stem}", intohylo)
 
         return completed
 

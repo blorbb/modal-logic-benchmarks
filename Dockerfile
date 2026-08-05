@@ -98,6 +98,8 @@ WORKDIR ./benches/lwb
 RUN patch -p1 < ../lwb.patch
 
 WORKDIR /run/benches
+RUN mkdir 3CNFd3 && tar -xf 3CNFd3.tgz -C 3CNFd3
+RUN mkdir 3CNFd5 && tar -xf 3CNFd5.tgz -C 3CNFd5
 RUN mkdir MQBF && tar -xf MQBF.tgz -C MQBF
 # will already extract to 3CNF/
 RUN tar -xf 3CNF.tgz

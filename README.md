@@ -72,3 +72,5 @@ The others are:
 - 3CNF benchmarks: also from [Cláudia Nalon](https://nalon.org/#software) ([direct download](https://nalon.org/software/3CNF.tgz)).
 - KSP solver: also from [Cláudia Nalon](https://nalon.org/#software), version 0.1.6 CADE-29 (final) ([direct download](https://nalon.org/software/ksp-0.1.6.tar.gz)).
   I have removed the `examples/` directory.
+- 3CNFd{3,5}: Depth 3 and 5 3CNF benchmarks from the [QBF Reasoning for Modal Logic test set](https://gitlab.cs.man.ac.uk/j13280mh1/qbf-reasoning-for-modal-logic).
+  These archives only contain the Spartacus `config2spart` and `config5spart` directories as they are the closest to InToHyLo, and we already have all other benchmarks they use.
