@@ -1,15 +1,19 @@
+# ruff: noqa: LOG015 PLW1509
+
 from __future__ import annotations
-from abc import ABC, abstractmethod
+
 import argparse
 import logging
 import os
-from pathlib import Path
 import resource
 import signal
 import subprocess
 import time
-from typing import Any, Callable, Literal
 import typing
+from abc import ABC, abstractmethod
+from collections.abc import Callable
+from pathlib import Path
+from typing import Any, Literal
 
 import owl
 
@@ -29,12 +33,7 @@ def log_run(
 
 def main():
     SOLVERS: dict[str, type[Solver]] = {
-        "cegarbox": CegarBox,
-        "cegarbox++": CegarBoxpp,
-        "coqk": CoqK,
-        "fact++": Factpp,
-        "ksp": Ksp,
-        "vct": Vct,
+        s.name().lower(): s for s in (CegarBox, CegarBoxpp, CoqK, Factpp, Ksp, Vct)
     }
     BENCHES: dict[str, Callable[[Solver], Any]] = (
         {
@@ -42,9 +41,9 @@ def main():
             "mqbf": Mqbf.bench_solver,
             "3cnf": Cnf3.bench_solver,
         }
-        | {f"lwb/{c}": lambda s, c=c: Lwb.bench_category(s, c) for c in Lwb.CATEGORIES}
+        | {f"lwb/{c}": lambda s, c=c: Lwb.bench_category(s, c) for c in Lwb.CATEGORIES}  # pyright: ignore[reportArgumentType]
         | {
-            f"mqbf/{c}": lambda s, c=c: Mqbf.bench_category(s, c)
+            f"mqbf/{c}": lambda s, c=c: Mqbf.bench_category(s, c)  # pyright: ignore[reportArgumentType]
             for c in Mqbf.CATEGORIES
         }
     )
@@ -70,6 +69,7 @@ def main():
         "-s",
         "--solver",
         choices=SOLVERS.keys(),
+        type=str.lower,
     )
     p.add_argument(
         "-b",
@@ -120,8 +120,9 @@ class Solver(ABC):
         self.__timeout_secs = timeout_secs
         self.__mem_bytes = mem_bytes
 
+    @classmethod
     @abstractmethod
-    def name(self) -> str: ...
+    def name(cls) -> str: ...
 
     @abstractmethod
     def convert(self, intohylo: str) -> str: ...
@@ -186,8 +187,9 @@ class Solver(ABC):
 
 
 class CoqK(Solver):
-    def name(self) -> str:
-        return "coqk"
+    @classmethod
+    def name(cls) -> str:
+        return "CoqK"
 
     def convert(self, intohylo: str) -> str:
         return intohylo
@@ -203,8 +205,9 @@ class CoqK(Solver):
 
 
 class CegarBox(Solver):
-    def name(self) -> str:
-        return "cegarbox"
+    @classmethod
+    def name(cls) -> str:
+        return "CEGARBox"
 
     def convert(self, intohylo: str) -> str:
         return (
@@ -229,8 +232,9 @@ class CegarBox(Solver):
 
 
 class CegarBoxpp(Solver):
-    def name(self) -> str:
-        return "cegarbox++"
+    @classmethod
+    def name(cls) -> str:
+        return "CEGARBox++"
 
     def convert(self, intohylo: str) -> str:
         return (
@@ -259,8 +263,9 @@ class CegarBoxpp(Solver):
 
 
 class Factpp(Solver):
-    def name(self) -> str:
-        return "fact++"
+    @classmethod
+    def name(cls) -> str:
+        return "FaCT++"
 
     def convert(self, intohylo: str) -> str:
         return owl.from_intohylo(intohylo)
@@ -290,8 +295,9 @@ class Factpp(Solver):
 
 
 class Ksp(Solver):
-    def name(self) -> str:
-        return "ksp"
+    @classmethod
+    def name(cls) -> str:
+        return "KSP"
 
     def convert(self, intohylo: str) -> str:
         # See ksp/USAGE for formula format. Same as CEGARBox.
@@ -320,7 +326,8 @@ class Ksp(Solver):
 
 
 class Vct(Solver):
-    def name(self) -> str:
+    @classmethod
+    def name(cls) -> str:
         return "vct"
 
     def convert(self, intohylo: str) -> str:
