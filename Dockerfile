@@ -8,14 +8,15 @@ RUN cabal update && cabal install --only-dependencies
 RUN cabal configure
 RUN cabal build
 
-# Build CEGARBoxCPP
+# ===== Build CEGARBox++ =====
 # instructions copied from their README
-# TODO: performance seems to be the same as just copying the existing kaleidoscope binary.
-FROM ubuntu:22.04 AS build-cegarboxpp
-RUN apt-get update && apt-get install -y build-essential wget unzip tar cmake libz-dev libgoogle-glog-dev
-RUN apt-get install -y git
+# The kaleidoscope binary in the repo seems to be outdated.
+FROM ubuntu:22.04 AS build-cegarboxcpp-deps
+RUN apt-get update && apt-get install -y build-essential wget unzip tar cmake libz-dev libgoogle-glog-dev git libboost-all-dev
 
-COPY solvers/CEGARBoxCPP /build
+FROM build-cegarboxcpp-deps AS build-cegarboxpp
+
+COPY solvers/CEGARBox++ /build
 WORKDIR /build
 
 RUN git clone https://github.com/agurfinkel/minisat.git && cd minisat && make config prefix=/usr && make install
@@ -25,6 +26,21 @@ RUN export ANTLR_DIR=/antlr4 && wget https://www.antlr.org/download/antlr4-cpp-r
   mkdir -p $ANTLR_DIR/build $ANTLR_DIR/run && cd $ANTLR_DIR/build && cmake .. && make install
 
 RUN make
+
+# TODO: CEGARBox++(KSP) build not working
+# CEGARBox++(KSP)
+# FROM build-cegarboxcpp-deps AS build-cegarboxppksp
+
+# COPY solvers/CEGARBox++(KSP) /build
+# WORKDIR /build
+
+# RUN git clone https://github.com/agurfinkel/minisat.git && cd minisat && make config prefix=/usr && make install
+# RUN wget https://nalon.org/software/ltl2snf-0.1.0.tar.gz && tar xzf ltl2snf-0.1.0.tar.gz && cd ltl2snf-0.1.0 && make && mv ./ltl2snf ../ && cd .. && rm -rf ltl2snf-0.1.0*
+# RUN export ANTLR_DIR=/antlr4 && wget https://www.antlr.org/download/antlr4-cpp-runtime-4.13.0-source.zip && \
+#   mkdir -p $ANTLR_DIR && unzip -q antlr4-cpp-runtime-4.13.0-source.zip -d $ANTLR_DIR && \
+#   mkdir -p $ANTLR_DIR/build $ANTLR_DIR/run && cd $ANTLR_DIR/build && cmake .. && make install
+
+# RUN make
 
 # ===== Build Coq tableaux =====
 FROM coqorg/coq:8.17.1 AS build-coq
@@ -78,8 +94,8 @@ WORKDIR /build/src
 RUN opam exec -- dune build ./bin/main.exe --release
 
 # ===== Run benchmarks =====
-FROM python:3.14 AS runner
-RUN apt-get update && apt-get install -y google-perftools
+FROM python:3.14-slim AS runner
+RUN apt-get update && apt-get install -y google-perftools patch tar
 RUN pip install lark
 
 WORKDIR /run
@@ -89,7 +105,9 @@ COPY --from=build-coq /build/Verified-tableaux-for-K-KT-S4/src/_build/default/ma
 COPY --from=build-factpp /build/target/FaCT++/FaCT++ .
 COPY --from=build-ksp /build/ksp .
 COPY --from=build-vct /build/src/_build/default/bin/main.exe ./vct
-COPY --from=build-cegarboxpp /build/kaleidoscope ./cegarboxpp
+COPY --from=build-cegarboxpp /build/kaleidoscope ./CEGARBox++
+# RUN mkdir 'CEGARBox++(KSP)'
+# COPY --from=build-cegarboxppksp /build/kaleidoscope /build/ksp /build/ksp/conf './CEGARBox++(KSP)/'
 
 COPY benches ./benches
 
@@ -106,8 +124,8 @@ RUN tar -xf 3CNF.tgz
 
 WORKDIR /run
 
-COPY bench.py .
 COPY owl.py .
 COPY solvers/ksp-0.1.6/conf.files/ijcar-2022/cord_mlple_K.conf ./ksp.conf
+COPY bench.py .
 
 CMD ["python3", "./bench.py"]

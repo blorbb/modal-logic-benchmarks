@@ -253,7 +253,38 @@ class CegarBoxpp(Solver):
         )
 
     def run_args(self, bench_path: str) -> list[str]:
-        return ["./cegarboxpp", "-f", bench_path]
+        return ["./CEGARBox++", "-f", bench_path]
+
+    def interpret_output(self, output: str) -> Literal["SAT", "UNSAT", "UNKNOWN"]:
+        if output == "Satisfiable":
+            return "SAT"
+        elif output == "Unsatisfiable":
+            return "UNSAT"
+        else:
+            return "UNKNOWN"
+
+
+class CegarBoxppKsp(Solver):
+    @classmethod
+    def name(cls) -> str:
+        return "CEGARBox++(KSP)"
+
+    def convert(self, intohylo: str) -> str:
+        return (
+            intohylo.strip()
+            .removeprefix("begin")
+            .removesuffix("end")
+            .replace("[r1]", "[]")
+            .replace("<r1>", "<>")
+            .replace("->", "=>")
+            .replace("<->", "<=>")
+            .replace("true", "$true")
+            .replace("false", "$false")
+            .strip()
+        )
+
+    def run_args(self, bench_path: str) -> list[str]:
+        return ["./CEGARBox++(KSP)", "-f", bench_path]
 
     def interpret_output(self, output: str) -> Literal["SAT", "UNSAT", "UNKNOWN"]:
         if output == "Satisfiable":
@@ -488,7 +519,8 @@ class Cnf3d3:
         dir = Path("./benches/3CNFd3")
         completed = 0
         for file in dir.iterdir():
-            intohylo = "begin " + file.read_text() + " end"
+            # CEGARBox++ can't handle newlines
+            intohylo = "begin " + file.read_text().replace("\n", " ") + " end"
             completed += solver.solve(f"3cnfd3/{file.stem}", intohylo)
 
         return completed
@@ -500,7 +532,8 @@ class Cnf3d5:
         dir = Path("./benches/3CNFd5")
         completed = 0
         for file in dir.iterdir():
-            intohylo = "begin " + file.read_text() + " end"
+            # CEGARBox++ can't handle newlines
+            intohylo = "begin " + file.read_text().replace("\n", " ") + " end"
             completed += solver.solve(f"3cnfd5/{file.stem}", intohylo)
 
         return completed
