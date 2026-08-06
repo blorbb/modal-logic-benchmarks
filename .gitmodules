@@ -14,6 +14,11 @@
 	path = solvers/vct
 	url = git@github.com:blorbb/vct.git
   branch = v2-formula-preprocess
-[submodule "solvers/CEGARBoxCPP"]
-	path = solvers/CEGARBoxCPP
+[submodule "solvers/CEGARBox++(KSP)"]
+	path = solvers/CEGARBox++(KSP)
 	url = git@github.com:cormackikkert/CEGARBoxCPP.git
+	branch = ksp-merge
+[submodule "solvers/CEGARBox++"]
+	path = solvers/CEGARBox++
+	url = git@github.com:cormackikkert/CEGARBoxCPP.git
+	branch = no-superfluous-jumps
