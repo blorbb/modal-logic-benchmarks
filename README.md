@@ -74,3 +74,4 @@ The others are:
   I have removed the `examples/` directory.
 - 3CNFd{3,5}: Depth 3 and 5 3CNF benchmarks from the [QBF Reasoning for Modal Logic test set](https://gitlab.cs.man.ac.uk/j13280mh1/qbf-reasoning-for-modal-logic).
   These archives only contain the Spartacus `config2spart` and `config5spart` directories as they are the closest to InToHyLo, and we already have all other benchmarks they use.
+  Their file names have also been 0-padded so that they are run in clause-variable-ratio order.

@@ -521,7 +521,11 @@ class Cnf3d3:
         for file in dir.iterdir():
             # CEGARBox++ can't handle newlines
             intohylo = "begin " + file.read_text().replace("\n", " ") + " end"
-            completed += solver.solve(f"3cnfd3/{file.stem}", intohylo)
+            # name is "test_NNN_NN", middle 3 are CVR.
+            [_, clause_var_ratio, _] = file.stem.split("_")
+            completed += solver.solve(
+                f"3cnfd3/{clause_var_ratio}/{file.stem}", intohylo
+            )
 
         return completed
 
@@ -534,7 +538,11 @@ class Cnf3d5:
         for file in dir.iterdir():
             # CEGARBox++ can't handle newlines
             intohylo = "begin " + file.read_text().replace("\n", " ") + " end"
-            completed += solver.solve(f"3cnfd5/{file.stem}", intohylo)
+            # name is "test_NNN_NN", middle 3 are CVR.
+            [_, clause_var_ratio, _] = file.stem.split("_")
+            completed += solver.solve(
+                f"3cnfd5/{clause_var_ratio}/{file.stem}", intohylo
+            )
 
         return completed
 
