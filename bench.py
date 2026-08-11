@@ -23,8 +23,8 @@ def log_run(
     problem: str,
     result: Literal["SAT", "UNSAT", "TLE", "MLE", "UNKNOWN"],
     elapsed: float,
-    stdout="",
-    stderr="",
+    stdout,
+    stderr,
 ):
     print(
         "\t".join([solver, problem, result, str(elapsed), repr(stdout), repr(stderr)])
@@ -163,7 +163,8 @@ class Solver(ABC):
             elapsed = time.time() - start_time
             os.killpg(os.getpgid(p.pid), signal.SIGKILL)
             try:
-                p.communicate(timeout=5.0)  # wait for the process to be fully freed
+                # wait for the process to be fully freed
+                stdout, stderr = p.communicate(timeout=5.0)
             except subprocess.TimeoutExpired:
                 raise RuntimeError("BUG: solver process did not die after being killed")
             log_run(
@@ -171,6 +172,8 @@ class Solver(ABC):
                 problem=problem,
                 result="TLE",
                 elapsed=elapsed,
+                stdout=stdout,
+                stderr=stderr,
             )
             return False
 
