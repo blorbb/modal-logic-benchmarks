@@ -13,13 +13,23 @@ build:
     docker buildx build -t benchmarks .
 
 # Run docker container using existing build
-run-nobuild *args:
-    # Note: --init required to reap zombie processes that might be
-    # spawned from shell scripts after killing a solver due to TLE.
-    docker run --init -t -v "$(pwd)/lwb-instances:/run/temp_target" --ulimit stack=134217728:134217728 benchmarks python bench.py {{ args }}
+exec-nobuild *cmd:
+    @# Note: --init required to reap zombie processes that might be
+    @# spawned from shell scripts after killing a solver due to TLE.
+    docker run --init -t \
+        -v "$(pwd)/src:/run/src" \
+        --ulimit stack=134217728:134217728 \
+        benchmarks {{ cmd }}
 
-# Build and run docker container
-run *args: build (run-nobuild args)
+bench-nobuild *args: (exec-nobuild "python" "src/bench.py" args)
+
+solve-nobuild *args: (exec-nobuild "python" "src/solve.py" args)
+
+# Build and run benchmarks with given args
+bench *args: build (bench-nobuild args)
+
+# Build and run solver with given args
+solve *args: build (solve-nobuild args)
 
 # Extract a binary from an existing build
 extract bin:

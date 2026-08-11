@@ -142,8 +142,8 @@ RUN tar -xf 3CNF.tgz
 WORKDIR /run
 
 COPY solvers/ksp-0.1.6/conf.files/ijcar-2022/cord_mlple_K.conf ./ksp.conf
-COPY owl.py .
-COPY depqbf.sh .
-COPY bench.py .
 
-CMD ["python3", "./bench.py"]
+# NOTE: src needs to be mounted via docker cli.
+# See Justfile.
+
+CMD ["python3", "src/bench.py"]
