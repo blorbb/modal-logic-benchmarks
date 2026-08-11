@@ -95,6 +95,19 @@ RUN opam exec -- make clean && make
 WORKDIR /build/src
 RUN opam exec -- dune build ./bin/main.exe --release
 
+
+# ===== Build DepQBF + Translation =====
+FROM build-c AS build-depqbf
+RUN apt-get install -y wget
+WORKDIR /build
+COPY solvers/DepQBF .
+RUN ./compile.sh
+
+FROM build-c AS build-ktoqbf
+WORKDIR /build
+COPY solvers/KtoQBF .
+RUN make
+
 # ===== Run benchmarks =====
 FROM python:3.14-slim AS runner
 RUN apt-get update && apt-get install -y google-perftools patch tar
@@ -110,6 +123,8 @@ COPY --from=build-vct /build/src/_build/default/bin/main.exe ./vct
 COPY ./solvers/CEGARBox++/kaleidoscope ./CEGARBox++
 # RUN mkdir 'CEGARBox++(KSP)'
 # COPY --from=build-cegarboxppksp /build/kaleidoscope /build/ksp /build/ksp/conf './CEGARBox++(KSP)/'
+COPY --from=build-depqbf /build/depqbf ./DepQBF
+COPY --from=build-ktoqbf /build/ktoqbf ./KtoQBF
 
 COPY benches ./benches
 
@@ -126,9 +141,9 @@ RUN tar -xf 3CNF.tgz
 
 WORKDIR /run
 
-COPY owl.py .
 COPY solvers/ksp-0.1.6/conf.files/ijcar-2022/cord_mlple_K.conf ./ksp.conf
+COPY owl.py .
+COPY depqbf.sh .
 COPY bench.py .
-COPY results/ results/
 
 CMD ["python3", "./bench.py"]

@@ -33,7 +33,8 @@ def log_run(
 
 def main():
     SOLVERS: dict[str, type[Solver]] = {
-        s.name().lower(): s for s in (CegarBox, CegarBoxpp, CoqK, Factpp, Ksp, Vct)
+        s.name().lower(): s
+        for s in (CegarBox, CegarBoxpp, CoqK, Factpp, Ksp, Vct, DepQbf)
     }
     BENCHES: dict[str, Callable[[Solver], Any]] = (
         {
@@ -149,6 +150,8 @@ class Solver(ABC):
             stdout=subprocess.PIPE,
             stderr=subprocess.PIPE,
             text=True,
+            # Make new process group to make sure all child processes are also killed
+            start_new_session=True,
             preexec_fn=lambda: resource.setrlimit(
                 resource.RLIMIT_AS, (self.__mem_bytes, self.__mem_bytes)
             ),
@@ -158,8 +161,11 @@ class Solver(ABC):
             stdout, stderr = p.communicate(timeout=self.__timeout_secs)
         except subprocess.TimeoutExpired:
             elapsed = time.time() - start_time
-            p.kill()
-            p.communicate()  # wait for the process to be fully freed
+            os.killpg(os.getpgid(p.pid), signal.SIGKILL)
+            try:
+                p.communicate(timeout=5.0)  # wait for the process to be fully freed
+            except subprocess.TimeoutExpired:
+                raise RuntimeError("BUG: solver process did not die after being killed")
             log_run(
                 solver=self.name(),
                 problem=problem,
@@ -368,6 +374,29 @@ class Vct(Solver):
 
     def run_args(self, bench_path: str) -> list[str]:
         return ["./vct", bench_path]
+
+    def interpret_output(self, output: str) -> Literal["SAT", "UNSAT", "UNKNOWN"]:
+        if output == "SAT":
+            return "SAT"
+        elif output == "UNSAT":
+            return "UNSAT"
+        else:
+            return "UNKNOWN"
+
+
+class DepQbf(Solver):
+    """DepQBF + K to QBF translation"""
+
+    @classmethod
+    def name(cls) -> str:
+        return "DepQBF"
+
+    def convert(self, intohylo: str) -> str:
+        # K to QBF conversion is non-trivial so we include it in the solve time.
+        return intohylo.removeprefix("begin").removesuffix("end").strip()
+
+    def run_args(self, bench_path: str) -> list[str]:
+        return ["./depqbf.sh", bench_path]
 
     def interpret_output(self, output: str) -> Literal["SAT", "UNSAT", "UNKNOWN"]:
         if output == "SAT":

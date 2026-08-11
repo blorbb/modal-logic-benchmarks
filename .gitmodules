@@ -22,3 +22,9 @@
 	path = solvers/CEGARBox++
 	url = git@github.com:cormackikkert/CEGARBoxCPP.git
 	branch = master
+[submodule "solvers/KtoQBF"]
+	path = solvers/KtoQBF
+	url = https://gitlab.cs.man.ac.uk/j13280mh1/ktoqbfmomen.git
+[submodule "solvers/DepQBF"]
+	path = solvers/DepQBF
+	url = git@github.com:lonsing/depqbf.git
