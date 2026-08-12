@@ -342,10 +342,11 @@ class DepQbf(Solver):
         return [f"{cwd}/depqbf.sh", bench_path]
 
     def interpret_output(self, output: str) -> Literal["SAT", "UNSAT", "UNKNOWN"]:
-        if output == "SAT":
-            return "SAT"
-        elif output == "UNSAT":
+        # Sometimes KtoQBF outputs "flag" as well
+        if "UNSAT" in output:
             return "UNSAT"
+        elif "SAT" in output:
+            return "SAT"
         else:
             return "UNKNOWN"
 
