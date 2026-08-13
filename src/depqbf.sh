@@ -3,7 +3,9 @@
 # only print the wall time to stderr
 TIMEFORMAT="%R"
 
-time ./KtoQBF "$1" "$1.qdimacs" || exit 1
+output=$(time ./KtoQBF "$1" "$1.qdimacs") || exit 1
+[[ "$output" =~ "bi implication found" ]] && exit 1
+
 # This exits with code 10 for sat, 20 for unsat.
 time ./DepQBF \
   --no-sdcl --no-qbce-dynamic --no-dynamic-nenofex \

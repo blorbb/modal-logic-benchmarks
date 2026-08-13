@@ -89,7 +89,7 @@ class InToHyLoToOwl(Transformer):
 
 def from_intohylo(modal_str: str) -> str:
     parser = Lark(intohylo_grammar, parser="lalr", transformer=InToHyLoToOwl())
-    return parser.parse(modal_str)
+    return str(parser.parse(modal_str))
 
 
 if __name__ == "__main__":
