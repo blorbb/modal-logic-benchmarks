@@ -21,7 +21,7 @@ import owl
 def all_solvers() -> dict[str, type[Solver]]:
     return {
         s.name().lower(): s
-        for s in (CegarBox, CegarBoxpp, CoqK, Factpp, Ksp, Vct, DepQbf)
+        for s in (CegarBox, CegarBoxpp, CoqK, Factpp, Ksp, Vct, DepQbf, Spartacus)
     }
 
 
@@ -347,6 +347,27 @@ class DepQbf(Solver):
             return "UNSAT"
         elif "SAT" in output:
             return "SAT"
+        else:
+            return "UNKNOWN"
+
+
+class Spartacus(Solver):
+    @classmethod
+    def name(cls) -> str:
+        return "Spartacus"
+
+    def convert(self, intohylo: str) -> str:
+        return intohylo
+
+    def run_args(self, bench_path: str) -> list[str]:
+        return ["./Spartacus", f"--intohyloFile={bench_path}"]
+
+    def interpret_output(self, output: str) -> Literal["SAT", "UNSAT", "UNKNOWN"]:
+        x = output.splitlines()[-1].strip()
+        if x == "satisfiable":
+            return "SAT"
+        elif x == "unsatisfiable":
+            return "UNSAT"
         else:
             return "UNKNOWN"
 

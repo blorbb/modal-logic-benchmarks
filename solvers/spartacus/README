@@ -1,0 +1,78 @@
+This distribution contains Spartacus, version 1.1.
+
+
+LICENSE
+=======
+
+* See spartacus/LICENSE for license information.
+
+* This distribution contains several files taken from the SML/NJ
+   library. Note the corresponding copyright information in
+   spartacus/src/smlnj-lib/COPYRIGHT.
+
+
+INSTALLATION
+============
+
+* Spartacus is written in Standard ML. In order to build Spartacus you
+   will need the MLton compiler, available from
+   http://mlton.org/
+
+* The MLton libraries are assumed to be installed in
+   /usr/lib/mlton
+   Adapt the first three lines of
+   spartacus/src/spartacus.mlb to refer to the installation directory of
+   the MLton libraries on your system.
+
+* In order to build Spartacus, use
+
+       make spartacus
+
+   or alternatively
+
+       mlton -codegen native -output spartacus src/spartacus.mlb
+
+* Besides Spartacus, the distribution contains a formula translation
+   tool (ftt), which can convert formulas of hybrid or description logics
+   into other formats.
+
+   If you want to install ftt, adapt
+   spartacus/src/ftt.mlb in the same way as described above for
+   spartacus/src/spartacus.mlb
+
+   In order to build ftt, use
+
+       make ftt
+
+   or alternatively
+
+       mlton -codegen native -output ftt src/ftt.mlb
+
+
+RUNNING SPARTACUS
+=================
+
+* Running Spartacus without any options or with the option
+
+       --help
+
+   will display a list of available options.
+
+* The directory spartacus/profiles contains configuration files
+   that specify the configurations (1.conf, 2.conf) and ordering
+   heuristics (ord?.conf) used in [1] (pp. 64-66, pp. 52-53).
+
+   In order to run Spartacus with these configurations, run Spartacus
+   with the option
+
+       --profile=FILENAME
+
+   where FILENAME is the name of the desired configuration file.
+
+
+REFERENCES
+==========
+
+[1] Daniel N. Goetzmann. Spartacus: A Tableau Prover for Hybrid Logic,
+     Master's Thesis, Saarland University, 2009. Available from
+     http://ps.uni-sb.de/theses/goetzmann/goetzmann-mthesis.pdf

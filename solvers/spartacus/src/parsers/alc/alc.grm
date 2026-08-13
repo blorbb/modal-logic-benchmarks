@@ -1,0 +1,81 @@
+(*****************************************************************************
+ *  Author:
+ *    Daniel N. Goetzmann <dngoetzmann@googlemail.com>
+ *
+ *  Copyright:
+ *     Daniel N. Goetzmann, 2009
+ *
+ *  Last modified:
+ *    $Date: 2009-06-22 23:59:07 +0200 (Mon, 22 Jun 2009) $
+ *    $Author: goetzmann $
+ *    $Revision: 460 $
+ *
+ *  This file is part of Spartacus,
+ *  the tableau prover for hybrid logic
+ *
+ *  Permission is hereby granted, free of charge, to any person obtaining
+ *  a copy of this software and associated documentation files (the
+ *  "Software"), to deal in the Software without restriction, including
+ *  without limitation the rights to use, copy, modify, merge, publish,
+ *  distribute, sublicense, and/or sell copies of the Software, and to
+ *  permit persons to whom the Software is furnished to do so, subject to
+ *  the following conditions:
+ *
+ *  The above copyright notice and this permission notice shall be
+ *  included in all copies or substantial portions of the Software.
+ *
+ *  THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND,
+ *  EXPRESS OR IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF
+ *  MERCHANTABILITY, FITNESS FOR A PARTICULAR PURPOSE AND
+ *  NONINFRINGEMENT. IN NO EVENT SHALL THE AUTHORS OR COPYRIGHT HOLDERS BE
+ *  LIABLE FOR ANY CLAIM, DAMAGES OR OTHER LIABILITY, WHETHER IN AN ACTION
+ *  OF CONTRACT, TORT OR OTHERWISE, ARISING FROM, OUT OF OR IN CONNECTION
+ *  WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
+ *
+ *****************************************************************************)
+
+
+
+%%
+
+%pos int
+
+%name Alc
+
+%term ATOM of string | RELATION of string | TRUE | FALSE | AND | OR | NOT | BOX | DIA | LPAREN | RPAREN | IMPL | DIMPL | EOF
+%nonterm START of Parsetree.parsetree | FLIST of Parsetree.parsetree list | FORMULA of Parsetree.parsetree | BOOLEAN_EXPR of Parsetree.parsetree | RULE_EXPR of Parsetree.parsetree | ATOMIC_EXPR of Parsetree.parsetree
+
+%eop EOF
+%noshift EOF
+
+%start START
+
+%%
+
+START :
+	  FORMULA											(FORMULA)
+
+FLIST :
+	  FORMULA											([FORMULA])
+	| FORMULA FLIST										(FORMULA::FLIST)
+
+FORMULA :
+	  BOOLEAN_EXPR										(BOOLEAN_EXPR)
+	| RULE_EXPR											(RULE_EXPR)
+	| ATOMIC_EXPR										(ATOMIC_EXPR)
+
+BOOLEAN_EXPR :
+	  LPAREN NOT FORMULA RPAREN							(Parsetree.neg FORMULA)
+	| LPAREN IMPL FORMULA FORMULA RPAREN				(Parsetree.impl FORMULA1 FORMULA2)
+	| LPAREN DIMPL FORMULA FORMULA RPAREN				(Parsetree.dimpl FORMULA1 FORMULA2)
+	| LPAREN AND FLIST RPAREN							(Parsetree.mconj FLIST)
+	| LPAREN OR FLIST RPAREN							(Parsetree.mdisj FLIST)
+
+RULE_EXPR :
+	  LPAREN BOX RELATION FORMULA RPAREN				(Parsetree.BOX (RELATION, FORMULA))
+	| LPAREN DIA RELATION FORMULA RPAREN				(Parsetree.DIAMOND (RELATION, FORMULA))
+
+ATOMIC_EXPR :
+	  ATOM												(Parsetree.PROPVAR ATOM)
+	| TRUE												(Parsetree.mconj nil)
+	| FALSE												(Parsetree.mdisj nil)

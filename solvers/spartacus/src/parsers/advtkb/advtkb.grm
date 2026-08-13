@@ -1,0 +1,263 @@
+(*****************************************************************************
+ *  Author:
+ *    Daniel N. Goetzmann <dngoetzmann@googlemail.com>
+ *
+ *  Copyright:
+ *     Daniel N. Goetzmann, 2009
+ *
+ *  Last modified:
+ *    $Date: 2009-06-22 23:59:07 +0200 (Mon, 22 Jun 2009) $
+ *    $Author: goetzmann $
+ *    $Revision: 460 $
+ *
+ *  This file is part of Spartacus,
+ *  the tableau prover for hybrid logic
+ *
+ *  Permission is hereby granted, free of charge, to any person obtaining
+ *  a copy of this software and associated documentation files (the
+ *  "Software"), to deal in the Software without restriction, including
+ *  without limitation the rights to use, copy, modify, merge, publish,
+ *  distribute, sublicense, and/or sell copies of the Software, and to
+ *  permit persons to whom the Software is furnished to do so, subject to
+ *  the following conditions:
+ *
+ *  The above copyright notice and this permission notice shall be
+ *  included in all copies or substantial portions of the Software.
+ *
+ *  THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND,
+ *  EXPRESS OR IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF
+ *  MERCHANTABILITY, FITNESS FOR A PARTICULAR PURPOSE AND
+ *  NONINFRINGEMENT. IN NO EVENT SHALL THE AUTHORS OR COPYRIGHT HOLDERS BE
+ *  LIABLE FOR ANY CLAIM, DAMAGES OR OTHER LIABILITY, WHETHER IN AN ACTION
+ *  OF CONTRACT, TORT OR OTHERWISE, ARISING FROM, OUT OF OR IN CONNECTION
+ *  WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
+ *
+ *****************************************************************************)
+
+
+
+exception MultDef
+
+
+datatype constraint = CIMPL of TkbTree.formula * TkbTree.formula | CEQ of TkbTree.formula * TkbTree.formula | CTRANS of string list | CREFL of string list | CSER of string list | CSYM of string list | CIMPR of string * string
+
+datatype definition = CPT of string * TkbTree.formula | CTR of constraint
+
+fun transform xs =
+	let
+		fun findDef (CPT (c, t), m) =
+			let
+				val m = TkbTree.findDef m t
+			in
+				case Binarymap.peek (m, c)
+					of SOME (TkbTree.PC _) => Binarymap.insert (m, c, TkbTree.MDC)
+					 | SOME TkbTree.DC => Binarymap.insert (m, c, TkbTree.MDC)
+					 | SOME _ => m
+					 | NONE => Binarymap.insert (m, c, TkbTree.DC)
+			end
+	  | findDef (CTR (CIMPL (t1, t2)), m) = TkbTree.preventSubst (TkbTree.findDef m t2) t1
+	  | findDef (CTR (CEQ (t1, t2)), m) = TkbTree.preventSubst (TkbTree.preventSubst m t2) t1
+	  | findDef (CTR (CTRANS rs), m) = m
+	  | findDef (CTR (CREFL rs), m) = m
+	  | findDef (CTR (CSER rs), m) = m
+	  | findDef (CTR (CSYM rs), m) = m
+	  | findDef (CTR (CIMPR (r1, r2)), m) = m
+		
+		fun define (CPT (c, t), (dict, ys)) =
+			let
+			in
+				case Binarymap.peek (dict, c)
+					of SOME TkbTree.DC =>
+						let
+							val (dict, t) = TkbTree.subst dict t
+						in
+							(Binarymap.insert (dict, c, t), ys)
+						end
+					 | SOME TkbTree.MDC =>
+						let
+							val (dict, t) = TkbTree.subst dict t
+						in
+							case !Settings.dcRepresentation
+								of Settings.DCRNORM =>
+									(dict, (Parsetree.dimpl (Parsetree.PROPVAR c) (TkbTree.toParsetree t))::ys)
+								 | Settings.DCRCONJ =>
+									let
+										val t' = TkbTree.toParsetree t
+										val t1 = Parsetree.impl (Parsetree.PROPVAR c) t'
+										val t2 = Parsetree.impl t' (Parsetree.PROPVAR c)
+									in
+										(dict, (Parsetree.conj t1 t2)::ys)
+									end
+								 | Settings.DCRDISJ =>
+									let
+										val t' = TkbTree.toParsetree t
+										val t1 = Parsetree.conj (Parsetree.PROPVAR c) t'
+										val t2 = Parsetree.conj (Parsetree.neg (Parsetree.PROPVAR c)) (Parsetree.neg t')
+									in
+										(dict, (Parsetree.disj t1 t2)::ys)
+									end
+						end
+					 | SOME _ => Exn.unexpected "AdvancedTkbGrm.transform.define"
+					 | NONE => Exn.unexpected "AdvancedTkbGrm.transform.define"
+			end
+		  | define (CTR (CIMPL (t1, t2)), (dict, ys)) = (dict, (Parsetree.impl (TkbTree.toParsetree t1) (TkbTree.toParsetree t2))::ys)
+		  | define (CTR (CEQ (t1, t2)), (dict, ys)) = (dict, (Parsetree.dimpl (TkbTree.toParsetree t1) (TkbTree.toParsetree t2))::ys)
+		  | define (CTR (CTRANS rs), x) = (app RelationMgr.setTransitive rs; x)
+		  | define (CTR (CREFL rs), x) = (app RelationMgr.setReflexive rs; x)
+		  | define (CTR (CSER rs), x) = (app RelationMgr.setSerial rs; x)
+		  | define (CTR (CSYM rs), x) = (app RelationMgr.setSymmetric rs; x)
+		  | define (CTR (CIMPR (r1, r2)), x) = (RelationMgr.setSubrelation (r1, r2); x)
+		
+		val m = foldl findDef (Binarymap.mkDict String.compare) xs
+		
+		val (dict, ys) = foldl define (m, nil) xs
+		
+		val univ =
+			foldl
+				(fn (t, s) => Parsetree.conj s t)
+				(Parsetree.mconj nil)
+				ys
+		
+		val checksat =
+			let
+				fun f c =
+					case Binarymap.peek (dict, c)
+						of NONE => (c, Parsetree.mconj nil)
+						 | SOME TkbTree.MDC => (c, Parsetree.EXISTS (Parsetree.PROPVAR c))
+						 | SOME TkbTree.DC => Exn.unexpected "AdvancedTkbGrm.transform"
+						 | SOME t => (c, Parsetree.EXISTS (TkbTree.toParsetree t))
+			in
+				map f
+					(case !Settings.checksat
+						of ["*"] => map #1 (Binarymap.listItems dict)
+						 | xs => xs
+					)
+			end
+	in
+		(Parsetree.ALL univ, SOME checksat)
+	end
+
+%%
+
+%pos int
+
+%name AdvancedTkb
+
+%term
+  ATOM of string
+| TRUE
+| FALSE
+| AND
+| OR
+| NOT
+| BOX
+| DIA
+| LPAREN
+| RPAREN
+| DPR
+| DPC
+| DC
+| DI
+| IMPLIESC
+| EQUALC
+| ONEOF
+| TRANSITIVE
+| REFLEXIVE
+| SERIAL
+| SYMMETRIC
+| IMPLIESR
+| EOF
+
+%nonterm
+  START of (Parsetree.parsetree * (string * Parsetree.parsetree) list option) list
+| FLIST of TkbTree.formula list
+| DCLISTS of (Parsetree.parsetree * (string * Parsetree.parsetree) list option) list
+| DCLIST of definition list
+| CONCEPT of definition
+| CONSTRAINT of definition
+| NOTHINGTODO of unit
+| FORMULA of TkbTree.formula
+| BOOLEAN_EXPR of TkbTree.formula
+| RULE_EXPR of TkbTree.formula
+| ATOMIC_EXPR of TkbTree.formula
+| ONEOFLIST of TkbTree.formula
+| VARLIST of string list
+
+%eop EOF
+%noshift EOF
+
+%start START
+
+%%
+
+START :
+	  DCLISTS											(DCLISTS)
+
+DCLISTS :
+	  LPAREN DCLIST RPAREN								([transform DCLIST])
+	| LPAREN DCLIST RPAREN DCLISTS						((transform DCLIST)::DCLISTS)
+	| DCLIST											([transform DCLIST])
+
+DCLIST :
+	  CONCEPT											([CONCEPT])
+	| CONCEPT DCLIST									(CONCEPT::DCLIST)
+	| CONSTRAINT										([CONSTRAINT])
+	| CONSTRAINT DCLIST									(CONSTRAINT::DCLIST)
+	| NOTHINGTODO										(nil)
+	| NOTHINGTODO DCLIST								(DCLIST)
+
+CONSTRAINT :
+	  LPAREN IMPLIESC FORMULA FORMULA RPAREN			(CTR (CIMPL (FORMULA1, FORMULA2)))
+	| LPAREN DPC ATOM FORMULA RPAREN                    (CTR (CIMPL (TkbTree.PC ATOM, FORMULA)))
+	| LPAREN DPC TRUE FORMULA RPAREN					(CTR (CIMPL (TkbTree.CONJ nil, FORMULA)))
+	| LPAREN DPC FALSE FORMULA RPAREN					(CTR (CIMPL (TkbTree.DISJ nil, FORMULA)))
+	| LPAREN EQUALC FORMULA FORMULA RPAREN				(CTR (CEQ (FORMULA1, FORMULA2)))
+	| LPAREN TRANSITIVE VARLIST RPAREN					(CTR (CTRANS VARLIST))
+	| LPAREN REFLEXIVE VARLIST RPAREN					(CTR (CREFL VARLIST))
+	| LPAREN SERIAL VARLIST RPAREN						(CTR (CSER VARLIST))
+	| LPAREN SYMMETRIC VARLIST RPAREN					(CTR (CSYM VARLIST))
+	| LPAREN IMPLIESR ATOM ATOM RPAREN					(CTR (CIMPR (ATOM1, ATOM2)))
+
+NOTHINGTODO :
+	  LPAREN DPR ATOM RPAREN							(())
+	| LPAREN DPC ATOM RPAREN							(())
+	| LPAREN DI ATOM RPAREN								(())
+
+CONCEPT :
+	  LPAREN DC ATOM FORMULA RPAREN						(CPT (ATOM, FORMULA))
+	| LPAREN DC TRUE FORMULA RPAREN						(CTR (CEQ (TkbTree.CONJ nil, FORMULA)))
+	| LPAREN DC FALSE FORMULA RPAREN					(CTR (CEQ (TkbTree.DISJ nil, FORMULA)))
+
+FLIST :
+
+	  FORMULA											([FORMULA])
+	| FORMULA FLIST										(FORMULA::FLIST)
+
+FORMULA :
+	  LPAREN BOOLEAN_EXPR RPAREN						(BOOLEAN_EXPR)
+	| LPAREN RULE_EXPR RPAREN							(RULE_EXPR)
+	| LPAREN ONEOF ONEOFLIST RPAREN						(ONEOFLIST)
+	| ATOMIC_EXPR										(ATOMIC_EXPR)
+
+BOOLEAN_EXPR :
+	  NOT FORMULA										(TkbTree.NEG FORMULA)
+	| AND FLIST											(TkbTree.CONJ FLIST)
+	| OR FLIST											(TkbTree.DISJ FLIST)
+
+RULE_EXPR :
+	  BOX ATOM FORMULA									(TkbTree.BOX (ATOM, FORMULA))
+	| DIA ATOM FORMULA									(TkbTree.DIA (ATOM, FORMULA))
+
+ATOMIC_EXPR :
+	  ATOM												(TkbTree.PC ATOM)
+	| TRUE												(TkbTree.CONJ nil)
+	| FALSE												(TkbTree.DISJ nil)
+	| LPAREN FORMULA RPAREN								(FORMULA)
+
+ONEOFLIST :
+	  ATOM												(TkbTree.EQ ATOM)
+	| ATOM ONEOFLIST									(TkbTree.DISJ [TkbTree.EQ ATOM, ONEOFLIST])
+
+VARLIST :
+	  ATOM												([ATOM])
+	| ATOM VARLIST										(ATOM::VARLIST)

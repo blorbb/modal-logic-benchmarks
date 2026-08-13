@@ -108,10 +108,21 @@ WORKDIR /build
 COPY solvers/KtoQBF .
 RUN make
 
+# ===== Build Spartacus =====
+# NOTE: this cannot be ubuntu 26.04.
+# Spartacus often crashes for some reason.
+# But it works fine on 24.04.
+# MLton doesn't exist on apt on 22.04 either.
+FROM ubuntu:24.04 AS build-spartacus
+RUN apt-get update && apt-get install -y mlton make
+
+WORKDIR /build
+COPY solvers/spartacus .
+RUN make spartacus
+
 # ===== Run benchmarks =====
-FROM python:3.14-slim AS runner
-RUN apt-get update && apt-get install -y google-perftools patch tar
-RUN pip install lark
+FROM ubuntu:26.04 AS runner
+RUN apt-get update && apt-get install -y python3 python3-lark libgoogle-perftools-dev patch tar
 
 WORKDIR /run
 
@@ -125,6 +136,7 @@ COPY ./solvers/CEGARBox++/kaleidoscope ./CEGARBox++
 # COPY --from=build-cegarboxppksp /build/kaleidoscope /build/ksp /build/ksp/conf './CEGARBox++(KSP)/'
 COPY --from=build-depqbf /build/depqbf ./DepQBF
 COPY --from=build-ktoqbf /build/ktoqbf ./KtoQBF
+COPY --from=build-spartacus /build/spartacus ./Spartacus
 
 COPY benches ./benches
 

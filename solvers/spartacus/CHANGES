@@ -1,0 +1,111 @@
+Spartacus Changelog
+
+Version 1.1.3
+=============
+
+Release date: 2010-04-29
+
+Bug fixes:
+----------
+
+* A bug in the propagation of backjumping information on the rule
+   application queue (triggered by nominal substitution;
+   thanks to Guillaume Hoffmann).
+
+* Addition of an unnecessary underscore to the output file name by
+  --dotFile.
+
+
+Version 1.1.2
+=============
+
+Release date: 2009-10-11
+
+Bug fixes:
+----------
+
+* Divergence on certain inputs when lazy branching is switched on
+   (thanks to Hongkai Liu).
+
+
+Version 1.1.1
+=============
+
+Release date: 2009-07-26
+
+Bug fixes:
+----------
+
+* A bug in the implementation of lazy branching on negated nominals
+   (thanks to Guillaume Hoffmann).
+
+
+Version 1.1
+===========
+
+Release date: 2009-06-23
+
+Additional functionality:
+-------------------------
+
+* lazy branching on negated nominals
+
+* improved lazy branching on boxes
+
+* improved nominal substitution by rescheduling diamond expansions
+   instead of merging successors
+   (the old variant is still available with --succ-merge)
+
+* improved handling of biconditionals
+
+* checking satisfiability of individual atomic DL-concepts (with --checksat)
+
+* improved conflict analysis for caching using dependency sets
+
+* caching of terms containing nominals, provided all the occurrences  
+   are guarded (e.g., <r>=x) or negative (~=x)
+
+* partial support of OWL 1.1 functional style syntax
+
+* extended support of FaCT and KRSS syntax (still partial)
+
+* additional heuristics for disjunctions:
+   schedule disjunctions and disjuncts according to how often they
+   are involved in clashes
+
+* additional heuristics for diamonds:
+   schedule diamonds based on the size of the corresponding patterns
+
+Changes:
+--------
+
+* Checking for timeout condition less frequently in order to improve
+   performance.
+
+
+Version 1.0.1
+=============
+
+Release date: 2009-03-09
+
+Bug fixes:
+----------
+
+* An unhandled exception on certain inputs with satisfaction terms.  
+   The exception occurs when --blocking=eager is used with 
+   --blockingds=list or --blockingds=matrix
+   (thanks to Marta Cialdea).
+
+* Possibly incorrect behavior on hybrid inputs when lazy branching is
+   enabled for boxes.
+
+Changes:
+--------
+
+* Profile 1 is now the default configuration.
+
+
+Version 1.0
+===========
+
+Release date: 2009-02-05

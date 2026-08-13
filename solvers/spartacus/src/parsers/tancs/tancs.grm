@@ -1,0 +1,89 @@
+(*****************************************************************************
+ *  Author:
+ *    Daniel N. Goetzmann <dngoetzmann@googlemail.com>
+ *
+ *  Copyright:
+ *     Daniel N. Goetzmann, 2009
+ *
+ *  Last modified:
+ *    $Date: 2009-06-22 23:59:07 +0200 (Mon, 22 Jun 2009) $
+ *    $Author: goetzmann $
+ *    $Revision: 460 $
+ *
+ *  This file is part of Spartacus,
+ *  the tableau prover for hybrid logic
+ *
+ *  Permission is hereby granted, free of charge, to any person obtaining
+ *  a copy of this software and associated documentation files (the
+ *  "Software"), to deal in the Software without restriction, including
+ *  without limitation the rights to use, copy, modify, merge, publish,
+ *  distribute, sublicense, and/or sell copies of the Software, and to
+ *  permit persons to whom the Software is furnished to do so, subject to
+ *  the following conditions:
+ *
+ *  The above copyright notice and this permission notice shall be
+ *  included in all copies or substantial portions of the Software.
+ *
+ *  THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND,
+ *  EXPRESS OR IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF
+ *  MERCHANTABILITY, FITNESS FOR A PARTICULAR PURPOSE AND
+ *  NONINFRINGEMENT. IN NO EVENT SHALL THE AUTHORS OR COPYRIGHT HOLDERS BE
+ *  LIABLE FOR ANY CLAIM, DAMAGES OR OTHER LIABILITY, WHETHER IN AN ACTION
+ *  OF CONTRACT, TORT OR OTHERWISE, ARISING FROM, OUT OF OR IN CONNECTION
+ *  WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
+ *
+ *****************************************************************************)
+
+
+
+%%
+
+%pos int
+
+%name Tancs
+
+%term INPUTFORMULA | LPAREN | RPAREN | COMMA | PERIOD | COLON | HYPOTHESIS | CONJECTURE | BOX | POS | TRUE | FALSE | NOT | OR | AND | IMPL | VAR of string | EOF
+%nonterm START of Parsetree.parsetree | FLIST of (Parsetree.parsetree list * Parsetree.parsetree list) | HFORMULA of Parsetree.parsetree | CFORMULA of Parsetree.parsetree | IMPLICATION of Parsetree.parsetree | DISJUNCTION of Parsetree.parsetree | CONJUNCTION of Parsetree.parsetree | LITERAL of Parsetree.parsetree
+
+%eop EOF
+%noshift EOF
+
+%start START
+
+%%
+
+START :
+	  FLIST							(Parsetree.disj (Parsetree.mdisj (map Parsetree.neg (#1 FLIST))) (Parsetree.mconj (#2 FLIST)))
+
+FLIST :
+	  CFORMULA						(nil, [CFORMULA])
+	| HFORMULA						([HFORMULA], nil)
+	| CFORMULA FLIST				(#1 FLIST, CFORMULA::(#2 FLIST))
+	| HFORMULA FLIST				(HFORMULA::(#1 FLIST), #2 FLIST)
+
+CFORMULA :
+	  INPUTFORMULA LPAREN VAR COMMA CONJECTURE COMMA IMPLICATION RPAREN PERIOD		(IMPLICATION)
+
+HFORMULA :
+	  INPUTFORMULA LPAREN VAR COMMA HYPOTHESIS COMMA IMPLICATION RPAREN PERIOD		(IMPLICATION)
+
+LITERAL :
+	  TRUE							(Parsetree.mconj nil)
+	| FALSE							(Parsetree.mdisj nil)
+	| VAR							(Parsetree.PROPVAR VAR)
+	| NOT LITERAL					(Parsetree.neg LITERAL)
+	| BOX VAR COLON LITERAL			(Parsetree.BOX (VAR, LITERAL))
+	| POS VAR COLON LITERAL			(Parsetree.DIAMOND (VAR, LITERAL))
+	| LPAREN IMPLICATION RPAREN		(IMPLICATION)
+
+CONJUNCTION :
+	  LITERAL						(LITERAL)
+	| LITERAL AND CONJUNCTION		(Parsetree.conj LITERAL CONJUNCTION)
+
+DISJUNCTION :
+	  CONJUNCTION					(CONJUNCTION)
+	| CONJUNCTION OR DISJUNCTION	(Parsetree.disj CONJUNCTION DISJUNCTION)
+
+IMPLICATION :
+	  DISJUNCTION					(DISJUNCTION)
+	| DISJUNCTION IMPL IMPLICATION	(Parsetree.impl DISJUNCTION IMPLICATION)

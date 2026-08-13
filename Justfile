@@ -21,9 +21,9 @@ exec-nobuild *cmd:
         --ulimit stack=134217728:134217728 \
         benchmarks {{ cmd }}
 
-bench-nobuild *args: (exec-nobuild "python" "src/bench.py" args)
+bench-nobuild *args: (exec-nobuild "python3" "src/bench.py" args)
 
-solve-nobuild *args: (exec-nobuild "python" "src/solve.py" args)
+solve-nobuild *args: (exec-nobuild "python3" "src/solve.py" args)
 
 # Build and run benchmarks with given args
 bench *args: build (bench-nobuild args)

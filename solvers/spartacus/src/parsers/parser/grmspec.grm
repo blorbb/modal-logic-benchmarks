@@ -1,0 +1,117 @@
+(*****************************************************************************
+ *  Author:
+ *    Daniel N. Goetzmann <dngoetzmann@googlemail.com>
+ *
+ *  Copyright:
+ *     Daniel N. Goetzmann, 2009
+ *
+ *  Last modified:
+ *    $Date: 2009-06-22 23:59:07 +0200 (Mon, 22 Jun 2009) $
+ *    $Author: goetzmann $
+ *    $Revision: 460 $
+ *
+ *  This file is part of Spartacus,
+ *  the tableau prover for hybrid logic
+ *
+ *  Permission is hereby granted, free of charge, to any person obtaining
+ *  a copy of this software and associated documentation files (the
+ *  "Software"), to deal in the Software without restriction, including
+ *  without limitation the rights to use, copy, modify, merge, publish,
+ *  distribute, sublicense, and/or sell copies of the Software, and to
+ *  permit persons to whom the Software is furnished to do so, subject to
+ *  the following conditions:
+ *
+ *  The above copyright notice and this permission notice shall be
+ *  included in all copies or substantial portions of the Software.
+ *
+ *  THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND,
+ *  EXPRESS OR IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF
+ *  MERCHANTABILITY, FITNESS FOR A PARTICULAR PURPOSE AND
+ *  NONINFRINGEMENT. IN NO EVENT SHALL THE AUTHORS OR COPYRIGHT HOLDERS BE
+ *  LIABLE FOR ANY CLAIM, DAMAGES OR OTHER LIABILITY, WHETHER IN AN ACTION
+ *  OF CONTRACT, TORT OR OTHERWISE, ARISING FROM, OUT OF OR IN CONNECTION
+ *  WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
+ *
+ *****************************************************************************)
+
+
+
+%%
+
+%pos int
+
+%name Parser
+
+%term VAR of string | TRUE | FALSE | AND | OR | IMPL | DIMPL | NOT | ALL | EXISTS | DIFF | NEGDIFF | AT | EQ | LPAREN | RPAREN | LBRACKET | RBRACKET | LCHEVRON | RCHEVRON | LBRACE | RBRACE | SEP | COLON | AST | REFLEXIVE | TRANSITIVE | SERIAL | EOF | SEMI
+%nonterm START of Parsetree.parsetree option | OTHER of Parsetree.parsetree | CONJUNCTION of Parsetree.parsetree | DISJUNCTION of Parsetree.parsetree | IMPLICATION of Parsetree.parsetree | DIMPLICATION of Parsetree.parsetree | PREFIX of unit | REFLLIST of unit | TRANSLIST of unit | SERLIST of unit | VARLIST of string list
+
+%eop EOF SEMI
+%noshift EOF
+
+%start START
+
+%%
+
+START :
+	  IMPLICATION					(SOME IMPLICATION)
+	| PREFIX IMPLICATION			(SOME IMPLICATION)
+	| 								(NONE)
+
+PREFIX :
+	  REFLLIST						(())
+	| TRANSLIST						(())
+	| SERLIST						(())
+	| REFLLIST PREFIX				(())
+	| TRANSLIST PREFIX				(())
+	| SERLIST PREFIX				(())
+
+REFLLIST :
+	  REFLEXIVE AST RBRACE			(RelationMgr.setAllReflexive ())
+	| REFLEXIVE VARLIST RBRACE		(app RelationMgr.setReflexive VARLIST)
+	| REFLEXIVE RBRACE				(())
+
+TRANSLIST :
+	  TRANSITIVE AST RBRACE			(RelationMgr.setAllTransitive ())
+	| TRANSITIVE VARLIST RBRACE		(app RelationMgr.setTransitive VARLIST)
+	| TRANSITIVE RBRACE				(())
+
+SERLIST :
+	  SERIAL AST RBRACE				(RelationMgr.setAllSerial ())
+	| SERIAL VARLIST RBRACE			(app RelationMgr.setSerial VARLIST)
+	| SERIAL RBRACE					(())
+
+VARLIST :
+	  VAR							([VAR])
+	| VAR SEP VARLIST				(VAR::VARLIST)
+
+OTHER :
+	  VAR							(Parsetree.PROPVAR VAR)
+	| TRUE							(Parsetree.mconj nil)
+	| FALSE							(Parsetree.mdisj nil)
+	| EQ VAR						(Parsetree.NOMINAL VAR)
+	| LCHEVRON VAR RCHEVRON OTHER	(Parsetree.DIAMOND (VAR, OTHER))
+	| LBRACKET VAR RBRACKET OTHER	(Parsetree.BOX (VAR, OTHER))
+	| NOT OTHER						(Parsetree.neg OTHER)
+	| ALL OTHER						(Parsetree.ALL OTHER)
+	| EXISTS OTHER					(Parsetree.EXISTS OTHER)
+	| DIFF OTHER					(Parsetree.DIFF OTHER)
+	| NEGDIFF OTHER					(Parsetree.NEGDIFF OTHER)
+	| AT VAR OTHER					(Parsetree.AT (VAR, OTHER))
+	| VAR COLON OTHER				(Parsetree.AT (VAR, OTHER))
+	| LPAREN IMPLICATION RPAREN		(IMPLICATION)
+
+CONJUNCTION :
+	  OTHER							(OTHER)
+	| OTHER AND CONJUNCTION			(Parsetree.conj OTHER CONJUNCTION)
+
+DISJUNCTION :
+	  CONJUNCTION					(CONJUNCTION)
+	| CONJUNCTION OR DISJUNCTION	(Parsetree.disj CONJUNCTION DISJUNCTION)
+
+DIMPLICATION :
+	  DISJUNCTION						(DISJUNCTION)
+	| DISJUNCTION DIMPL DIMPLICATION	(Parsetree.dimpl DISJUNCTION DIMPLICATION)
+
+IMPLICATION :
+	  DIMPLICATION					(DIMPLICATION)
+	| DIMPLICATION IMPL IMPLICATION	(Parsetree.impl DIMPLICATION IMPLICATION)

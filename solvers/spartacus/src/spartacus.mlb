@@ -1,0 +1,188 @@
+(*****************************************************************************
+ *  Author:
+ *    Daniel N. Goetzmann <dngoetzmann@googlemail.com>
+ *
+ *  Copyright:
+ *     Daniel N. Goetzmann, 2009
+ *
+ *  Last modified:
+ *    $Date: 2009-06-22 23:59:07 +0200 (Mon, 22 Jun 2009) $
+ *    $Author: goetzmann $
+ *    $Revision: 460 $
+ *
+ *  This file is part of Spartacus,
+ *  the tableau prover for hybrid logic
+ *
+ *  Permission is hereby granted, free of charge, to any person obtaining
+ *  a copy of this software and associated documentation files (the
+ *  "Software"), to deal in the Software without restriction, including
+ *  without limitation the rights to use, copy, modify, merge, publish,
+ *  distribute, sublicense, and/or sell copies of the Software, and to
+ *  permit persons to whom the Software is furnished to do so, subject to
+ *  the following conditions:
+ *
+ *  The above copyright notice and this permission notice shall be
+ *  included in all copies or substantial portions of the Software.
+ *
+ *  THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND,
+ *  EXPRESS OR IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF
+ *  MERCHANTABILITY, FITNESS FOR A PARTICULAR PURPOSE AND
+ *  NONINFRINGEMENT. IN NO EVENT SHALL THE AUTHORS OR COPYRIGHT HOLDERS BE
+ *  LIABLE FOR ANY CLAIM, DAMAGES OR OTHER LIABILITY, WHETHER IN AN ACTION
+ *  OF CONTRACT, TORT OR OTHERWISE, ARISING FROM, OUT OF OR IN CONNECTION
+ *  WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
+ *
+ *****************************************************************************)
+
+
+/usr/lib/mlton/sml/basis/basis.mlb
+/usr/lib/mlton/sml/smlnj-lib/Util/smlnj-lib.mlb
+/usr/lib/mlton/sml/mlyacc-lib/mlyacc-lib.mlb
+
+util/listsort.sig.sml
+util/listsort.sml
+
+smlnj-lib/Binarymap.sml
+smlnj-lib/Binaryset.sml
+
+ds/dict.sig.sml
+ds/binarydict.sml
+ds/dynarraydict.sml
+
+core/settings.sml
+
+util/debug.sml
+util/util.sml
+util/exn.sig.sml
+util/exn.sml
+util/ref.sig.sml
+util/ref.sml
+
+ds/ubtree.sig.sml
+ds/ubtree.sml
+ds/bitmatrix.sig.sml
+ds/bitmatrix.sml
+ds/btprioq.sig.sml
+ds/btprioq.sml
+
+core/relationmgr.sig.sml
+core/relationmgr.sml
+
+preprocessing/parsetree.sml
+
+core/term.sml
+
+parsers/owlfs/owlfs.grm.sig
+parsers/owlfs/owlfs.lex.sml
+parsers/owlfs/owlfs.grm.sml
+parsers/owlfs/owlfsparser.sml
+
+parsers/lwb/lwb.grm.sig
+parsers/lwb/lwb.lex.sml
+parsers/lwb/lwb.grm.sml
+parsers/lwb/lwbparser.sml
+
+parsers/parser/grmspec.grm.sig
+parsers/parser/lexspec.lex.sml
+parsers/parser/grmspec.grm.sml
+parsers/parser/parser.sml
+
+parsers/ksatc/ksatc.grm.sig
+parsers/ksatc/ksatc.lex.sml
+parsers/ksatc/ksatc.grm.sml
+parsers/ksatc/ksatcparser.sml
+
+parsers/intohylo/intohylo.grm.sig
+parsers/intohylo/intohylo.lex.sml
+parsers/intohylo/intohylo.grm.sml
+parsers/intohylo/intohyloparser.sml
+
+parsers/alc/alc.grm.sig
+parsers/alc/alc.lex.sml
+parsers/alc/alc.grm.sml
+parsers/alc/alcparser.sml
+
+parsers/dimacs/dimacs.grm.sig
+parsers/dimacs/dimacs.lex.sml
+parsers/dimacs/dimacs.grm.sml
+parsers/dimacs/dimacsparser.sml
+
+parsers/dfg/dfg.grm.sig
+parsers/dfg/dfg.lex.sml
+parsers/dfg/dfg.grm.sml
+parsers/dfg/dfgparser.sml
+
+parsers/advtkb/tkbtree.sml
+parsers/advtkb/advtkb.grm.sig
+parsers/advtkb/advtkb.lex.sml
+parsers/advtkb/advtkb.grm.sml
+parsers/advtkb/advtkbparser.sml
+
+parsers/tancs/tancs.grm.sig
+parsers/tancs/tancs.lex.sml
+parsers/tancs/tancs.grm.sml
+parsers/tancs/tancsparser.sml
+
+preprocessing/translator.sig.sml
+preprocessing/translator.sml
+
+util/dependency.sig.sml
+util/dependency.sml
+
+heuristics/penaltymap.sig.sml
+heuristics/penaltymap.sml
+heuristics/disjunctionpenalties.sig.sml
+heuristics/disjunctionpenalties.sml
+
+core/agenda.sig.sml
+core/agenda.sml
+
+ds/propstore.sig.sml
+ds/propstore.sml
+ds/termstore.sig.sml
+ds/termstore.sml
+
+opt/lazystore.sig.sml
+opt/lazystore.sml
+opt/lazyboxstore.sig.sml
+opt/lazyboxstore.sml
+opt/lazynomstore.sig.sml
+opt/lazynomstore.sml
+
+core/universalstore.sig.sml
+core/universalstore.sml
+
+core/existentialstore.sig.sml
+core/existentialstore.sml
+
+opt/cache.sig.sml
+opt/treecache.sml
+opt/mtrxcache.sml
+opt/cache.sml
+
+core/node.sig.sml
+core/node.sml
+core/nodestore.sig.sml
+core/nodestore.sml
+
+blocking/patternstore.sig.sml
+blocking/listpatternstore.sml
+blocking/treepatternstore.sml
+blocking/mtrxpatternstore.sml
+blocking/patternstore.sml
+blocking/blockingmgr.sig.sml
+blocking/blockingmgr.sml
+
+core/branchingmgr.sig.sml
+core/branchingmgr.sml
+core/solver.sig.sml
+core/solver.sml
+
+output/helpmsg.sml
+output/printsettings.sml
+output/csvoutput.sml
+output/modeloutput.sml
+preprocessing/parser.sml
+preprocessing/readargs.sml
+
+core/main.sml

@@ -1,0 +1,93 @@
+(*****************************************************************************
+ *  Author:
+ *    Daniel N. Goetzmann <dngoetzmann@googlemail.com>
+ *
+ *  Copyright:
+ *     Daniel N. Goetzmann, 2009
+ *
+ *  Last modified:
+ *    $Date: 2009-09-25 21:38:23 +0200 (Fri, 25 Sep 2009) $
+ *    $Author: goetzmann $
+ *    $Revision: 463 $
+ *
+ *  This file is part of Spartacus,
+ *  the tableau prover for hybrid logic
+ *
+ *  Permission is hereby granted, free of charge, to any person obtaining
+ *  a copy of this software and associated documentation files (the
+ *  "Software"), to deal in the Software without restriction, including
+ *  without limitation the rights to use, copy, modify, merge, publish,
+ *  distribute, sublicense, and/or sell copies of the Software, and to
+ *  permit persons to whom the Software is furnished to do so, subject to
+ *  the following conditions:
+ *
+ *  The above copyright notice and this permission notice shall be
+ *  included in all copies or substantial portions of the Software.
+ *
+ *  THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND,
+ *  EXPRESS OR IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF
+ *  MERCHANTABILITY, FITNESS FOR A PARTICULAR PURPOSE AND
+ *  NONINFRINGEMENT. IN NO EVENT SHALL THE AUTHORS OR COPYRIGHT HOLDERS BE
+ *  LIABLE FOR ANY CLAIM, DAMAGES OR OTHER LIABILITY, WHETHER IN AN ACTION
+ *  OF CONTRACT, TORT OR OTHERWISE, ARISING FROM, OUT OF OR IN CONNECTION
+ *  WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
+ *
+ *****************************************************************************)
+
+
+structure Tokens = Tokens
+
+type pos = int
+type svalue = Tokens.svalue
+type ('a, 'b) token = ('a, 'b) Tokens.token
+type lexresult = (svalue, pos) token
+
+val pos = ref 0
+val eof = fn () => Tokens.EOF (!pos, !pos)
+
+%%
+
+%header (functor ParserLexFun (structure Tokens : Parser_TOKENS));
+
+alpha=[a-z];
+digit=[0-9];
+ws=[\ \t];
+
+%%
+
+"\n"                   => (pos := (!pos + 1); lex ());
+{ws}+                  => (lex ());
+"1"                    => (Tokens.TRUE (!pos, !pos));
+"0"                    => (Tokens.FALSE (!pos, !pos));
+"{reflexive:"          => (Tokens.REFLEXIVE (!pos, !pos));
+"{transitive:"         => (Tokens.TRANSITIVE (!pos, !pos));
+"{serial:"             => (Tokens.SERIAL (!pos, !pos));
+";"                    => (Tokens.SEMI (!pos, !pos));
+"&"                    => (Tokens.AND (!pos, !pos));
+"|"                    => (Tokens.OR (!pos, !pos));
+"->"                   => (Tokens.IMPL (!pos, !pos));
+"=>"                   => (Tokens.IMPL (!pos, !pos));
+"<->"                  => (Tokens.DIMPL (!pos, !pos));
+"<=>"                  => (Tokens.DIMPL (!pos, !pos));
+"~"                    => (Tokens.NOT (!pos, !pos));
+"!"                    => (Tokens.NOT (!pos, !pos));
+"-"                    => (Tokens.NOT (!pos, !pos));
+"A"                    => (Tokens.ALL (!pos, !pos));
+"E"                    => (Tokens.EXISTS (!pos, !pos));
+"D"                    => (Tokens.DIFF (!pos, !pos));
+"(~D)"                 => (Tokens.NEGDIFF (!pos, !pos));
+"@"                    => (Tokens.AT (!pos, !pos));
+"<"                    => (Tokens.LCHEVRON (!pos, !pos));
+">"                    => (Tokens.RCHEVRON (!pos, !pos));
+"["                    => (Tokens.LBRACKET (!pos, !pos));
+"]"                    => (Tokens.RBRACKET (!pos, !pos));
+"("                    => (Tokens.LPAREN (!pos, !pos));
+")"                    => (Tokens.RPAREN (!pos, !pos));
+"{"                    => (Tokens.LBRACE (!pos, !pos));
+"}"                    => (Tokens.RBRACE (!pos, !pos));
+"="                    => (Tokens.EQ (!pos, !pos));
+":"                    => (Tokens.COLON (!pos, !pos));
+","                    => (Tokens.SEP (!pos, !pos));
+"*"                    => (Tokens.AST (!pos, !pos));
+{alpha}({alpha}|{digit})* => (Tokens.VAR (yytext, !pos, !pos));
+.                      => (print "WARNING: ignoring invalid character\n"; lex ());

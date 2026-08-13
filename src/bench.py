@@ -190,7 +190,7 @@ class Lwb:
             return txt
         except FileNotFoundError:
             subprocess.run(
-                ["python", "./benches/lwb/generate.py", category, index, index, "1"],
+                ["python3", "./benches/lwb/generate.py", category, index, index, "1"],
                 stdout=subprocess.DEVNULL,
                 check=True,
             )
