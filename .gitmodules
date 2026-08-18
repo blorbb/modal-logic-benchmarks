@@ -13,7 +13,7 @@
 [submodule "solvers/vct"]
 	path = solvers/vct
 	url = git@github.com:blorbb/vct.git
-  branch = v2-formula-preprocess
+	branch = v3-extensions
 [submodule "solvers/CEGARBox++(KSP)"]
 	path = solvers/CEGARBox++(KSP)
 	url = git@github.com:cormackikkert/CEGARBoxCPP.git
