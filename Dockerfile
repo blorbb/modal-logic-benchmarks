@@ -122,9 +122,9 @@ RUN make spartacus
 
 # ===== Run benchmarks =====
 FROM ubuntu:26.04 AS runner
-RUN apt-get update && apt-get install -y python3 python3-lark libgoogle-perftools-dev patch tar
+RUN apt-get update && apt-get install -y python3 python3-lark libgoogle-perftools-dev libgoogle-perftools4 libboost-all-dev patch tar
 
-WORKDIR /run
+WORKDIR /app
 
 COPY --from=build-cegar /build/dist/build/CEGARBox/CEGARBox .
 COPY --from=build-coq /build/Verified-tableaux-for-K-KT-S4/src/_build/default/main.exe ./coqk
@@ -132,8 +132,10 @@ COPY --from=build-factpp /build/target/FaCT++/FaCT++ .
 COPY --from=build-ksp /build/ksp .
 COPY --from=build-vct /build/src/_build/default/bin/main.exe ./vct
 COPY ./solvers/CEGARBox++/kaleidoscope ./CEGARBox++
-# RUN mkdir 'CEGARBox++(KSP)'
-# COPY --from=build-cegarboxppksp /build/kaleidoscope /build/ksp /build/ksp/conf './CEGARBox++(KSP)/'
+# CEGARBox++(KSP) needs extra binaries and makes extra files, so put in its own dir
+COPY ./solvers/CEGARBox++(KSP)/kaleidoscope ./cbpp/CEGARBox++KSP
+COPY ./solvers/CEGARBox++(KSP)/ksp ./cbpp/ksp
+COPY ./solvers/CEGARBox++(KSP)/ksp.conf ./cbpp/ksp.conf
 COPY --from=build-depqbf /build/depqbf ./DepQBF
 COPY --from=build-ktoqbf /build/ktoqbf ./KtoQBF
 COPY --from=build-spartacus /build/spartacus ./Spartacus
@@ -144,14 +146,14 @@ COPY benches ./benches
 WORKDIR ./benches/lwb
 RUN patch -p1 < ../lwb.patch
 
-WORKDIR /run/benches
+WORKDIR /app/benches
 RUN mkdir 3CNFd3 && tar -xf 3CNFd3.tgz -C 3CNFd3
 RUN mkdir 3CNFd5 && tar -xf 3CNFd5.tgz -C 3CNFd5
 RUN mkdir MQBF && tar -xf MQBF.tgz -C MQBF
 # will already extract to 3CNF/
 RUN tar -xf 3CNF.tgz
 
-WORKDIR /run
+WORKDIR /app
 
 COPY solvers/ksp-0.1.6/conf.files/ijcar-2022/cord_mlple_K.conf ./ksp.conf
 

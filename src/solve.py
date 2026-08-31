@@ -21,7 +21,17 @@ import owl
 def all_solvers() -> dict[str, type[Solver]]:
     return {
         s.name().lower(): s
-        for s in (CegarBox, CegarBoxpp, CoqK, Factpp, Ksp, Vct, DepQbf, Spartacus)
+        for s in (
+            CegarBox,
+            CegarBoxpp,
+            CegarBoxppKsp,
+            CoqK,
+            Factpp,
+            Ksp,
+            Vct,
+            DepQbf,
+            Spartacus,
+        )
     }
 
 
@@ -214,29 +224,36 @@ class CegarBoxpp(Solver):
 class CegarBoxppKsp(Solver):
     @classmethod
     def name(cls) -> str:
-        return "CEGARBox++(KSP)"
+        return "CEGARBox++KSP"
 
     def convert(self, intohylo: str) -> str:
-        return (
+        # CEGARBox++(KSP) uses KSP format!
+        formula = (
             intohylo.strip()
             .removeprefix("begin")
             .removesuffix("end")
             .replace("[r1]", "[]")
             .replace("<r1>", "<>")
-            .replace("<->", "<=>")
-            .replace("->", "=>")
-            .replace("true", "$true")
-            .replace("false", "$false")
             .strip()
         )
+        return f"sos(formulas).\n{formula}.\nend_of_list."
 
     def run_args(self, bench_path: str) -> list[str]:
-        return ["./CEGARBox++(KSP)", "-f", bench_path]
+        # Note: this will correctly use the ksp and ksp.conf within ./cbpp/
+        return ["./cbpp/CEGARBox++KSP", "-k", "-f", bench_path]
 
     def interpret_output(self, output: str) -> Literal["SAT", "UNSAT", "UNKNOWN"]:
-        if output == "Satisfiable":
+        # Note: stderr may contain some `rm` errors. This is fine, its
+        # trying to clear files from some previous run.
+        # Note: sometimes some extra log lines are given. This is also fine.
+
+        # Note: this line being logged is not fine.
+        # "KSP PROCESS TERMINATED - So answer is wrong"
+        if "answer is wrong" in output:
+            return "UNKNOWN"
+        elif "Satisfiable" in output:
             return "SAT"
-        elif output == "Unsatisfiable":
+        elif "Unsatisfiable" in output:
             return "UNSAT"
         else:
             return "UNKNOWN"
@@ -334,7 +351,7 @@ class DepQbf(Solver):
 
     def convert(self, intohylo: str) -> str:
         # K to QBF conversion is non-trivial so we include it in the solve time.
-        return intohylo.removeprefix("begin").removesuffix("end").strip()
+        return intohylo.strip().removeprefix("begin").removesuffix("end").strip()
 
     def run_args(self, bench_path: str) -> list[str]:
         # depqbf.sh is relative to this file, not relative to invocation

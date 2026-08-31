@@ -17,7 +17,7 @@ exec-nobuild *cmd:
     @# Note: --init required to reap zombie processes that might be
     @# spawned from shell scripts after killing a solver due to TLE.
     docker run --init -t \
-        -v "$(pwd)/src:/run/src" \
+        -v "$(pwd)/src:/app/src" \
         --ulimit stack=134217728:134217728 \
         benchmarks {{ cmd }}
 
@@ -34,9 +34,9 @@ solve *args: build (solve-nobuild args)
 # Extract a binary from an existing build
 extract bin:
     docker create --name tmp benchmarks
-    @docker cp 'tmp:/run/{{ bin }}' . \
+    @docker cp 'tmp:/app/{{ bin }}' . \
         || (echo 'Available binaries:' \
-              && docker run benchmarks find /run -maxdepth 1 -type f -executable -printf '%f ' \
+              && docker run benchmarks find /app -maxdepth 1 -type f -executable -printf '%f ' \
               && echo)
     docker rm tmp
 
