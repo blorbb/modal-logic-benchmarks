@@ -8,42 +8,6 @@ RUN cabal update && cabal install --only-dependencies
 RUN cabal configure
 RUN cabal build
 
-
-# TODO: figure out exactly which CEGARBox++ version to use
-# ===== Build CEGARBox++ =====
-# instructions copied from their README
-# The kaleidoscope binary in the repo seems to be outdated.
-# FROM ubuntu:22.04 AS build-cegarboxcpp-deps
-# RUN apt-get update && apt-get install -y build-essential wget unzip tar cmake libz-dev libgoogle-glog-dev git libboost-all-dev
-
-# FROM build-cegarboxcpp-deps AS build-cegarboxpp
-
-# COPY solvers/CEGARBox++ /build
-# WORKDIR /build
-
-# RUN git clone https://github.com/agurfinkel/minisat.git && cd minisat && make config prefix=/usr && make install
-# RUN wget https://nalon.org/software/ltl2snf-0.1.0.tar.gz && tar xzf ltl2snf-0.1.0.tar.gz && cd ltl2snf-0.1.0 && make && mv ./ltl2snf ../ && cd .. && rm -rf ltl2snf-0.1.0*
-# RUN export ANTLR_DIR=/antlr4 && wget https://www.antlr.org/download/antlr4-cpp-runtime-4.13.0-source.zip && \
-#   mkdir -p $ANTLR_DIR && unzip -q antlr4-cpp-runtime-4.13.0-source.zip -d $ANTLR_DIR && \
-#   mkdir -p $ANTLR_DIR/build $ANTLR_DIR/run && cd $ANTLR_DIR/build && cmake .. && make install
-
-# RUN make
-
-# TODO: CEGARBox++(KSP) build not working
-# CEGARBox++(KSP)
-# FROM build-cegarboxcpp-deps AS build-cegarboxppksp
-
-# COPY solvers/CEGARBox++(KSP) /build
-# WORKDIR /build
-
-# RUN git clone https://github.com/agurfinkel/minisat.git && cd minisat && make config prefix=/usr && make install
-# RUN wget https://nalon.org/software/ltl2snf-0.1.0.tar.gz && tar xzf ltl2snf-0.1.0.tar.gz && cd ltl2snf-0.1.0 && make && mv ./ltl2snf ../ && cd .. && rm -rf ltl2snf-0.1.0*
-# RUN export ANTLR_DIR=/antlr4 && wget https://www.antlr.org/download/antlr4-cpp-runtime-4.13.0-source.zip && \
-#   mkdir -p $ANTLR_DIR && unzip -q antlr4-cpp-runtime-4.13.0-source.zip -d $ANTLR_DIR && \
-#   mkdir -p $ANTLR_DIR/build $ANTLR_DIR/run && cd $ANTLR_DIR/build && cmake .. && make install
-
-# RUN make
-
 # ===== Build Coq tableaux =====
 FROM coqorg/coq:8.17.1 AS build-coq
 RUN opam update && opam install -y dune menhir
@@ -120,9 +84,22 @@ WORKDIR /build
 COPY solvers/spartacus .
 RUN make spartacus
 
+# ===== Build Konclude =====
+FROM ubuntu:24.04 AS build-konclude
+RUN apt-get update && apt-get install -y curl unzip
+
+WORKDIR /build
+RUN curl -L -o konclude.zip "https://github.com/konclude/Konclude/releases/download/v0.7.0-1138/Konclude-v0.7.0-1138-Linux-x64-GCC-Static-Qt5.12.10.zip" \
+    && unzip -j konclude.zip "Konclude-v0.7.0-1138-Linux-x64-GCC-Static-Qt5.12.10/Binaries/Konclude" \
+    && rm konclude.zip
+
 # ===== Run benchmarks =====
-FROM ubuntu:26.04 AS runner
-RUN apt-get update && apt-get install -y python3 python3-lark libgoogle-perftools-dev libgoogle-perftools4 libboost-all-dev patch tar
+FROM ubuntu:24.04 AS runner
+RUN apt-get update && apt-get install -y \
+  python3 python3-lark \
+  libgoogle-perftools-dev libgoogle-perftools4 libboost-all-dev \
+  patch tar \
+  libpcre3 libglib2.0-0
 
 WORKDIR /app
 
@@ -139,6 +116,7 @@ COPY ./solvers/CEGARBox++(KSP)/ksp.conf ./cbpp/ksp.conf
 COPY --from=build-depqbf /build/depqbf ./DepQBF
 COPY --from=build-ktoqbf /build/ktoqbf ./KtoQBF
 COPY --from=build-spartacus /build/spartacus ./Spartacus
+COPY --from=build-konclude /build/Konclude ./Konclude
 
 COPY benches ./benches
 

@@ -25,6 +25,12 @@ bench-nobuild *args: (exec-nobuild "python3" "src/bench.py" args)
 
 solve-nobuild *args: (exec-nobuild "python3" "src/solve.py" args)
 
+bash-nobuild *args:
+    docker run --init -it \
+        -v "$(pwd)/src:/app/src" \
+        --ulimit stack=134217728:134217728 \
+        benchmarks bash
+
 # Build and run benchmarks with given args
 bench *args: build (bench-nobuild args)
 

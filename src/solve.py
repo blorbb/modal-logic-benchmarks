@@ -31,6 +31,7 @@ def all_solvers() -> dict[str, type[Solver]]:
             Vct,
             DepQbf,
             Spartacus,
+            Konclude,
         )
     }
 
@@ -265,7 +266,7 @@ class Factpp(Solver):
         return "FaCT++"
 
     def convert(self, intohylo: str) -> str:
-        return owl.from_intohylo(intohylo)
+        return owl.intohylo_to_krss(intohylo)
 
     def run_args(self, bench_path: str) -> list[str]:
         fact_conf = f"""
@@ -384,6 +385,34 @@ class Spartacus(Solver):
         if x == "satisfiable":
             return "SAT"
         elif x == "unsatisfiable":
+            return "UNSAT"
+        else:
+            return "UNKNOWN"
+
+
+class Konclude(Solver):
+    @classmethod
+    def name(cls) -> str:
+        return "Konclude"
+
+    def convert(self, intohylo: str) -> str:
+        return owl.intohylo_to_owl(intohylo)
+
+    def run_args(self, bench_path: str) -> list[str]:
+        return [
+            "./Konclude",
+            "satisfiability",
+            "-i",
+            bench_path,
+            "-x",
+            "http://example.org/ontology#D0",
+        ]
+
+    def interpret_output(self, output: str) -> Literal["SAT", "UNSAT", "UNKNOWN"]:
+        x = output.splitlines()[-1].strip()
+        if "is satisfiable" in x:
+            return "SAT"
+        elif "is not satisfiable" in x:
             return "UNSAT"
         else:
             return "UNKNOWN"
