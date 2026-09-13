@@ -207,6 +207,8 @@ class CegarBoxpp(Solver):
             .replace("->", "=>")
             .replace("true", "$true")
             .replace("false", "$false")
+            # can't handle newlines
+            .replace("\n", " ")
             .strip()
         )
 

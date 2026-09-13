@@ -261,8 +261,7 @@ class Cnf3d3:
         dir = Path("./benches/3CNFd3")
         completed = 0
         for file in dir.iterdir():
-            # CEGARBox++ can't handle newlines
-            intohylo = "begin " + file.read_text().replace("\n", " ") + " end"
+            intohylo = "begin " + file.read_text() + " end"
             # name is "test_NNN_NN", middle 3 are CVR.
             [_, clause_var_ratio, _] = file.stem.split("_")
             completed += solver.solve(
@@ -278,8 +277,7 @@ class Cnf3d5:
         dir = Path("./benches/3CNFd5")
         completed = 0
         for file in dir.iterdir():
-            # CEGARBox++ can't handle newlines
-            intohylo = "begin " + file.read_text().replace("\n", " ") + " end"
+            intohylo = "begin " + file.read_text() + " end"
             # name is "test_NNN_NN", middle 3 are CVR.
             [_, clause_var_ratio, _] = file.stem.split("_")
             completed += solver.solve(
