@@ -1,7 +1,5 @@
 # Benchmarks for Modal Logic Decision Procedures
 
-WIP.
-
 Requires docker and docker-buildx.
 [just](https://github.com/casey/just) is also recommended for easier running, but you can alternatively read the Justfile and copy the required commands.
 
